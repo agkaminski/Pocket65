@@ -35,6 +35,9 @@ KEY_NONE equ 24
 SCRN_DOT   equ 0x10
 SCRN_BLANK equ 0x20
 
+; Time base
+NMI_HZ equ 1024
+
 
 DUMMY
 
@@ -49,15 +52,17 @@ scrnptr         ds 1
 
 keycode         ds 1
 
-jiffies         ds 2
+jiffies         ds 2 ; Only for NMI use - non-atomic access
+time_s          ds 1
+
+keyb_temp            ds 1
 
 ; Not accessed by NMI
 
 temp            ds 1
 
 address         ds 2
-byte            ds 1
-sel             ds 1
+mode_sel        ds 1
 
 irq_ptr         ds 2
 irq_valid       ds 1
@@ -79,10 +84,81 @@ lut_ptr2bit     db 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
 
 ; "Business" code, handling user inputs, monitor functionality
 
+
+; Function putch
+; Updates one char on the screen.
+; Input: A - char, X - position. Output: screen.
+; Destroys: none.
+putch           STA screen, X
+                RTS
+
+
+; Function putbyte
+; Updates byte char on the screen.
+; Input: A - byte, X - position. Output: screen.
+; Destroys: X - incremented to the next screen location.
+putbyte         PHA
+                LSR A
+                LSR A
+                LSR A
+                LSR A
+                JSR putch
+                INX
+                PLA
+                AND #0x0F
+                JSR putch
+                INX
+                RTS
+
+
+; Function dot_enable
+; Turns dot on posion X on the screen.
+; Input: X - position. Output: screen.
+; Destroys: A.
+dot_enable      LDA #0x10
+                CLC
+                ADC screen, X
+                STA screen, X
+                RTS
+
+
+; Function draw_screen
+; Updates screen - current address and memory value.
+; Input: address, mode_sel. Output: screen.
+; Destroys: A, X, Y.
+draw_screen     LDX #0
+                LDY #0
+
+                LDA address + 1
+                JSR putbyte
+
+                LDA address
+                JSR putbyte
+
+                LDA #SCRN_BLANK
+                JSR putch
+                INX
+                JSR putch
+                INX
+
+                LDA (address), Y
+                JSR putbyte
+
+                LDA mode_sel
+                LDX #7
+                CMP #0
+                BEQ draw_screen_e
+                LDX #3
+
+draw_screen_e   JSR dot_enable
+                RTS
+
+
 ; Function reset
 ; Entry point.
 reset           LDA #0xff
                 STA init_done
+                CLD
 
                 ; Setup stack
                 LDX #0xff
@@ -103,10 +179,11 @@ reset0          STA screen, X
                 LDA #KEY_NONE
                 STA keycode
 
-                ; Jiffies
+                ; Jiffies, timers
                 LDA #0
                 STA jiffies
                 STA jiffies + 1
+                STA time_s
 
                 ; IRQ handling
                 STA irq_ptr
@@ -123,10 +200,93 @@ reset0          STA screen, X
                 STA init_done
                 SEI
 
-main_loop       LDA keycode
+main_loop       JSR draw_screen
+
+                ; TODO Debouncing, edge-triggering!!!
+                LDA keycode
                 CMP KEY_NONE
                 BPL main_loop
 
+                CMP #16
+                BPL main_inc
+
+                ; 0-F key pressed - edit one digit
+                PHA
+                LDA mode_sel
+                CMP #0
+                BEQ main_edit_b
+
+                ; Edit address
+                CLC
+                ROL address + 1
+                ROL address
+                ROL address + 1
+                ROL address
+                ROL address + 1
+                ROL address
+                ROL address + 1
+                ROL address
+                LDA 0xF0
+                AND address
+                STA address
+                PLA
+                ORA address
+                STA address
+
+                JMP main_loop
+
+main_edit_b     LDY #0
+                LDA (address), Y
+                ASL A
+                ASL A
+                ASL A
+                ASL A
+                STA temp
+                PLA
+                ORA temp
+                STA (address), Y
+                JMP main_loop
+
+main_inc        CMP #KEY_INC
+                BNE main_dec
+
+                ; INC key pressed - increment address
+                INC address
+                BNE main_loop
+                INC address + 1
+                JMP main_loop
+
+main_dec        CMP #KEY_DEC
+                BNE main_sel
+
+                ; DEC key pressed - decrement address
+                LDA address
+                CLC
+                SBC #1
+                STA address
+                BCC main_loop
+                DEC address + 1
+                JMP main_loop
+
+main_sel        CMP #KEY_SEL
+                BNE main_go
+
+                ; SEL key pressed - change edit mode
+                LDA #1
+                EOR mode_sel
+                JMP main_loop
+
+main_go         CMP #KEY_GO
+                BNE main_loop ; Ignore function keys
+
+                ; GO key pressed - execute user program
+                ; Prepare return address
+                LDA #reset & 0xFF
+                PHA
+                LDA #reset >> 8
+                PHA
+
+                JMP (address)
 
 
 ; System functions
@@ -137,7 +297,7 @@ main_loop       LDA keycode
 ; Destroys: None
 irq             PHA
 
-                ; Exit if IRQ not enabled by user SW
+                ; Exit if IRQ is not enabled by a user SW
                 LDA irq_valid
                 BEQ irq_ret
 
@@ -182,13 +342,7 @@ nmi             PHA
                 BNE nmi_end
 
                 ; Increment jiffies
-                LDA jiffies
-                CLC
-                ADC #1
-                STA jiffies
-                LDA jiffies + 1
-                ADC #0
-                STA jiffies
+                JSR handle_timer
 
                 ; Handle UI
                 JSR refresh_screen
@@ -204,6 +358,23 @@ nmi_end         PLA
                 TAY
                 PLA
                 RTI
+
+
+; Function handle_timer
+; Time keeping. Assumption - called every NMI
+; Input: jiffies var. Output: jiffies, time_s vars.
+; Destroys: A, X.
+handle_timer    INC jiffies
+                BNE handle_timer_1
+                LDX jiffies + 1
+                INX
+                TXA
+                CMP #NMI_HZ / 256
+                BMI handle_timer_0
+                INC time_s
+                LDA #0
+handle_timer_0  STA jiffies + 1
+handle_timer_1  RTS
 
 
 ; Function refresh_screen
@@ -230,7 +401,7 @@ refresh_screen0 TAX
 ; Function keyboard_decode
 ; Decodes keyboard row to key code
 ; Input: A - keyboard row, X - value to add. Output: A - key code.
-; Destroys: A, Y, temp
+; Destroys: A, Y, keyb_temp
 keyboard_decode LDY #0
                 CLC ; To avoid endless loop, just in case
 kb_decode_loop  ROR
@@ -238,10 +409,10 @@ kb_decode_loop  ROR
                 INY
                 BCS kb_decode_loop
 kb_decode_end   TXA
-                STA temp
+                STA keyb_temp
                 TYA
                 CLC
-                ADC temp
+                ADC keyb_temp
                 RTS
 
 
