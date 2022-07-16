@@ -1,0 +1,44 @@
+Drill Station Info File: d.dri
+
+ Date              : 2022-07-15 23:57
+ Drills            : generated
+ Device            : Excellon drill station, coordinate format 2.5 inch
+
+Parameter settings:
+
+ Tolerance Drill + :  0.00 %
+ Tolerance Drill - :  0.00 %
+ Rotate            : no
+ Mirror            : no
+ Optimize          : yes
+ Auto fit          : yes
+ OffsetX           : 0inch
+ OffsetY           : 0inch
+ Layers            : Drills Holes
+
+Drill File Info:
+
+ Data Mode         : Absolute
+ Units             : 1/100000 Inch
+
+Drills used:
+
+ Code  Size       used
+
+ T01   0.0197inch   721
+ T02   0.0320inch   444
+ T03   0.0354inch    80
+ T04   0.0394inch     8
+ T05   0.0400inch    88
+ T06   0.0433inch     2
+ T07   0.0470inch    96
+ T08   0.0591inch     2
+ T09   0.0595inch     2
+ T10   0.0710inch    48
+ T11   0.1260inch     6
+
+Total number of drills: 1497
+
+Plotfiles:
+
+ d.nc

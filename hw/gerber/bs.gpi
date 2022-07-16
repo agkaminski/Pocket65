@@ -1,0 +1,56 @@
+Photoplotter Info File: bs.gpi
+
+ Date              : 2022-07-15 23:57
+ Plotfile          : bs.gbs
+ Apertures         : generated:
+ Device            : Gerber RS-274-X photoplotter, coordinate format 2.5 inch
+
+Parameter settings:
+
+ Emulate Apertures : no
+ Tolerance Draw  + :  0.00 %
+ Tolerance Draw  - :  0.00 %
+ Tolerance Flash + :  0.00 %
+ Tolerance Flash - :  0.00 %
+ Rotate            : no
+ Mirror            : no
+ Optimize          : yes
+ Auto fit          : yes
+ OffsetX           : 0inch
+ OffsetY           : 0inch
+
+Plotfile Info:
+
+ Coordinate Format : 2.5
+ Coordinate Units  : Inch
+ Data Mode         : Absolute
+ Zero Suppression  : None
+ End Of Block      : *
+
+Apertures used:
+
+ Code     Shape     Size                  used
+
+ D10      round     0.1340inch               6
+ D11      octagon   0.0600inch             114
+ D12      round     0.0730inch               2
+ D13      round     0.0600inch              11
+ D14      draw      0.0600inch             313
+ D15      octagon   0.0680inch              88
+ D16      round     0.0966inch               2
+ D17      round     0.0674inch               2
+ D18      draw      0.0785inch              96
+ D19      round     0.0790inch              48
+ D20      round     0.0671inch              80
+ D21      square    0.0840inch               6
+ D22      rectangle 0.0434inch x 0.0316inch     6
+ D23      square    0.1025inch               2
+ D24      rectangle 0.0710inch x 0.0592inch     8
+ D25      rectangle 0.0671inch x 0.0592inch     6
+ D26      rectangle 0.0789inch x 0.1497inch     2
+ D27      round     0.1430inch               2
+ D28      rectangle 0.0710inch x 0.0540inch     6
+ D29      rectangle 0.0720inch x 0.0060inch     3
+ D30      octagon   0.0710inch               3
+ D31      round     0.0710inch               3
+
