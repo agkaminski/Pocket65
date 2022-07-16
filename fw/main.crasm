@@ -1,0 +1,308 @@
+CPU 6502
+OUTPUT HEX
+
+; Vectors
+NMI_VECT equ 0xFFFA
+IRQ_VECT equ 0xFFFC
+RST_VECT equ 0xFFFE
+
+; Memory
+ROM_BEGIN equ 0xF800
+ROM_END   equ 0xFFFF
+RAM_BEGIN equ 0x0000
+RAM_END   equ 0x0800
+
+; I/O
+EXT1_BASE equ 0x2000
+EXT2_BASE equ 0x4000
+EXT3_BASE equ 0x6000
+SCRN_BASE equ 0x8000
+KEYB_BASE equ 0xA000
+NMI_CLR   equ 0xC000
+
+; Key codes
+KEY_INC  equ 16
+KEY_DEC  equ 17
+KEY_SEL  equ 18
+KEY_GO   equ 19
+KEY_F1   equ 20
+KEY_F2   equ 21
+KEY_F3   equ 22
+KEY_F4   equ 23
+KEY_NONE equ 24
+
+; Screen
+SCRN_DOT   equ 0x10
+SCRN_BLANK equ 0x20
+
+
+DUMMY
+
+; Zero page variables
+* = RAM_BEGIN
+
+; Accessed by NMI
+init_done       ds 1 ; 0 - init done, others - NMI shouldn't do it's tasks
+
+screen          ds 8
+scrnptr         ds 1
+
+keycode         ds 1
+
+jiffies         ds 2
+
+; Not accessed by NMI
+
+temp            ds 1
+
+address         ds 2
+byte            ds 1
+sel             ds 1
+
+irq_ptr         ds 2
+irq_valid       ds 1
+
+
+CODE
+
+* = ROM_BEGIN
+
+
+; Const storage
+
+lut_7seg        db 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71 ; Dot disabled
+                db 0xBF, 0x86, 0xDB, 0xCF, 0xE6, 0xED, 0xFD, 0x87, 0xFF, 0xEF, 0xF7, 0xFC, 0xB9, 0xDE, 0xF9, 0xF1 ; Dot enabled
+                db 0x00                                                                                           ; Digit disabled
+
+lut_ptr2bit     db 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
+
+
+; "Business" code, handling user inputs, monitor functionality
+
+; Function reset
+; Entry point.
+reset           LDA #0xff
+                STA init_done
+
+                ; Setup stack
+                LDX #0xff
+                TXS
+
+                ; Init variables
+                LDA #KEY_NONE
+                STA keycode
+
+                ; Clear screen
+                LDA #SCRN_BLANK
+                LDX #7
+reset0          STA screen, X
+                DEX
+                BPL reset0
+
+                ; Keycode
+                LDA #KEY_NONE
+                STA keycode
+
+                ; Jiffies
+                LDA #0
+                STA jiffies
+                STA jiffies + 1
+
+                ; IRQ handling
+                STA irq_ptr
+                STA irq_ptr + 1
+                STA irq_valid
+
+                ; Address
+                STA address
+                LDA #0x20
+                STA address + 1
+
+                ; Init done!
+                LDA #0
+                STA init_done
+                SEI
+
+main_loop       LDA keycode
+                CMP KEY_NONE
+                BPL main_loop
+
+
+
+; System functions
+
+; Function irq
+; Handles IRQ - TODO.
+; Input: None. Output: None.
+; Destroys: None
+irq             PHA
+
+                ; Exit if IRQ not enabled by user SW
+                LDA irq_valid
+                BEQ irq_ret
+
+                TYA
+                PHA
+                TXA
+                PHA
+
+                ; There's no indirect JSR we need - do it hard way
+                ; Prepare return address on stack to allow RTS
+                LDA #irq_end & 0xFF
+                PHA
+                LDA #irq_end >> 8
+                PHA
+
+                ; Jump to address pointed by irq_ptr
+                JMP (irq_ptr)
+
+irq_end         PLA
+                TAX
+                PLA
+                TAY
+                PLA
+irq_ret         PHA
+                RTI
+
+
+; Function nmi
+; Handles NMI - jiffies, keyboard, screen.
+; Input: None. Output: None.
+; Destroys: None
+nmi             PHA
+                TYA
+                PHA
+                TXA
+                PHA
+
+                ; Early exit if init is not complete
+                ; We cannot disable NMI, so this is needed
+                LDA init_done
+                CMP 0
+                BNE nmi_end
+
+                ; Increment jiffies
+                LDA jiffies
+                CLC
+                ADC #1
+                STA jiffies
+                LDA jiffies + 1
+                ADC #0
+                STA jiffies
+
+                ; Handle UI
+                JSR refresh_screen
+                JSR scan_keyboard
+
+                ; Clear NMI to allow a next one to occur
+                ; Dummy write to preset 74HC74 flip-flop
+                STA NMI_CLR
+
+nmi_end         PLA
+                TAX
+                PLA
+                TAY
+                PLA
+                RTI
+
+
+; Function refresh_screen
+; Displays next digit on multiplexed 7 segment display
+; Input: screen, scrnptr vars. Output: scrnptr.
+; Destroys: A, X, Y.
+refresh_screen  LDX scrnptr
+                INX                     ; Increment current digit
+                TXA
+                CMP #8
+                BMI refresh_screen0     ; Screen wrap-around?
+                LDA #0
+refresh_screen0 TAX
+                STA scrnptr
+                LDA screen, X           ; Fetch from frame buffer
+                AND 0x3f                ; Mask out don't-matter bits
+                TAY
+                LDA lut_7seg, Y         ; Convert to 7 segment
+                LDY lut_ptr2bit, X      ; Get digit address offset
+                STA SCRN_BASE, Y        ; Display digit
+                RTS
+
+
+; Function keyboard_decode
+; Decodes keyboard row to key code
+; Input: A - keyboard row, X - value to add. Output: A - key code.
+; Destroys: A, Y, temp
+keyboard_decode LDY #0
+                CLC ; To avoid endless loop, just in case
+kb_decode_loop  ROR
+                BCC kb_decode_end
+                INY
+                BCS kb_decode_loop
+kb_decode_end   TXA
+                STA temp
+                TYA
+                CLC
+                ADC temp
+                RTS
+
+
+; Function scan_keyboard
+; Scans whole keyboard, stores key code in keycode var
+; Input: None. Output: None.
+; Destroys: A, X
+scan_keyboard   LDA KEYB_BASE + 0x3E
+                CMP 0xff
+                BNE keyboard_row1
+                LDX #KEY_F1
+                JSR keyboard_decode
+                JMP keyboard_end
+
+keyboard_row1   LDA KEYB_BASE + 0x3D
+                CMP 0xff
+                BNE keyboard_row2
+                LDX #0xc
+                JSR keyboard_decode
+                JMP keyboard_end
+
+keyboard_row2   LDA KEYB_BASE + 0x3B
+                CMP 0xff
+                BNE keyboard_row3
+                LDX #8
+                JSR keyboard_decode
+                JMP keyboard_end
+
+keyboard_row3   LDA KEYB_BASE + 0x37
+                CMP 0xff
+                BNE keyboard_row4
+                LDX #4
+                JSR keyboard_decode
+                JMP keyboard_end
+
+keyboard_row4   LDA KEYB_BASE + 0x2F
+                CMP 0xff
+                BNE keyboard_row5
+                LDX #0
+                JSR keyboard_decode
+                JMP keyboard_end
+
+keyboard_row5   LDA KEYB_BASE + 0x1F
+                CMP 0xff
+                BNE keyboard_none
+                LDX #KEY_INC
+                JSR keyboard_decode
+                JMP keyboard_end
+
+keyboard_none   LDA KEY_NONE
+
+keyboard_end    STA keycode
+                RTS
+
+; Vectors
+
+* = NMI_VECT
+dw nmi
+
+* = IRQ_VECT
+dw irq
+
+* = RST_VECT
+dw reset
