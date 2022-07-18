@@ -3,8 +3,8 @@ OUTPUT HEX
 
 ; Vectors
 NMI_VECT equ 0xFFFA
-IRQ_VECT equ 0xFFFC
-RST_VECT equ 0xFFFE
+IRQ_VECT equ 0xFFFE
+RST_VECT equ 0xFFFC
 
 ; Memory
 ROM_BEGIN equ 0xF800
@@ -60,7 +60,7 @@ nmi_temp        ds 1
 
 ; Not accessed by NMI
 
-temp            ds 1
+temp            ds 6
 get_key_temp    ds 1
 sleep_temp0     ds 1
 sleep_temp1     ds 1
@@ -78,14 +78,21 @@ CODE
 
 ; BIOS function table
 dw reset          ; void reset(void)
+dw irq_register   ; void irq_register(irq_addr (stack))
+
 dw get_screen_ptr ; screen_ptr (stack) get_screen_ptr(void)
-dw decode_7seg    ; 7seg decode_7seg(character (A))
 dw putch          ; void putch(character (A), position (X))
 dw putbyte        ; void putch(byte (A), position (X))
 dw dot_enable     ; void dot_enable(position (X))
 dw dot_disable    ; void dot_disable(position (X))
+dw clear_screen   ; void clear_screen(void)
+dw printx_u16     ; void printx_u16(number (stack))
+dw printd_u16     ; void printd_u16(number (stack))
+dw printd_s16     ; void printd_s16(number (stack))
+
 dw get_key        ; key_code (A) get_key(void)
-dw irq_register   ; void irq_register(irq_addr (stack))
+dw get_key_nb     ; key_code (A) get_key_nb(void)
+
 dw get_jiffies    ; jffies (A) get_jiffies(void)
 dw get_seconds    ; seconds (A) get_seconds(void)
 dw msleep         ; void msleep(time (A))
@@ -103,23 +110,235 @@ lut_ptr2bit     db 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
 
 ; "Business" code, handling user inputs, monitor functionality
 
-; Function decode_7seg
-; Decodes 4-bit nibble to 7-segment.
-; Input: A - character. Output: A - decoded 7-segment.
-; Destroys: A, X.
-decode_7seg     AND #0x0F
+; Function printd_u16
+; Display unsigned 16-bit decimal digit on the screen
+; Input: stack - number. Output: none.
+; Destroys:
+printd_u16      LDA #0
+                STA temp
+                STA temp + 1
+                STA temp + 2
+                PLA
+                STA temp + 3
+                PLA
+                STA temp + 4
+                LDX #16
+printd_u16_l0   CLC                     ; loop 1 - shift 16 times
+printd_u16_l1   LDY #4                  ; loop 2 - shift all once
+                LDA temp, Y
+                ROL
+                STA temp, Y
+                DEY
+                BPL printd_u16_l1
+
+                LDA temp + 2
+                AND #0x0F
+                CMP #0x05
+                BMI printd_u16_0
+                LDA temp + 2
+                CLC
+                ADC #0x03
+                STA temp + 2
+                LDA temp + 1
+                ADC #0
+                STA temp + 1
+                LDA temp
+                ADC #0
+                STA temp
+
+printd_u16_0    LDA temp + 2
+                AND #0xF0
+                CMP #0x50
+                BMI printd_u16_1
+                LDA temp + 2
+                CLC
+                ADC #0x30
+                STA temp + 2
+                LDA temp + 1
+                ADC #0
+                STA temp + 1
+                LDA temp
+                ADC #0
+                STA temp
+
+printd_u16_1    LDA temp + 1
+                AND #0x0F
+                CMP #0x05
+                BMI printd_u16_2
+                LDA temp + 1
+                CLC
+                ADC #0x03
+                STA temp + 1
+                LDA temp
+                ADC #0
+                STA temp
+
+printd_u16_2    LDA temp + 1
+                AND #0xF0
+                CMP #0x50
+                BMI printd_u16_3
+                LDA temp + 1
+                CLC
+                ADC #0x30
+                STA temp + 1
+                LDA temp
+                ADC #0
+                STA temp
+
+printd_u16_3    LDA temp
+                AND #0x0F
+                CMP #0x05
+                BMI printd_u16_4
+                LDA temp
+                CLC
+                ADC #0x03
+                STA temp
+
+printd_u16_4    DEX
+                BPL printd_u16_l0
+
+                LDX #3
+
+                LDA temp
+                LSR
+                LSR
+                LSR
+                LSR
+                JSR putch
+
+                LDA temp
+                AND #0x0F
+                INX
+                JSR putch
+
+                LDA temp + 1
+                LSR
+                LSR
+                LSR
+                LSR
+                INX
+                JSR putch
+
+                LDA temp + 1
+                AND #0x0F
+                INX
+                JSR putch
+
+                LDA temp
+                LSR
+                LSR
+                LSR
+                LSR
+                INX
+                JSR putch
+
+                LDA temp + 2
+                AND #0x0F
+                INX
+                JSR putch
+
+                LDX #3
+
+                LDA temp
+                BNE printd_u16_5
+                STA screen, X
+
+printd_u16_5    INX
+                LDA temp + 1
+                AND #0xF0
+                BNE printd_u16_6
+                STA screen, X
+
+printd_u16_6    INX
+                LDA temp + 1
+                AND #0x0F
+                BNE printd_u16_7
+                STA screen, X
+
+printd_u16_7    INX
+                LDA temp
+                AND #0xF0
+                BNE printd_u16_8
+                STA screen, X
+
+printd_u16_8    RTS
+
+
+; Function printd_s16
+; Display signed 16-bit decimal digit on the screen
+; Input: stack - number. Output: none.
+; Destroys:
+printd_s16      LDA #0
+                STA temp + 5
+                PLA
                 TAX
-                LDA lut_7seg, X
+                PLA
+                BMI printd_s16_neg
+                PHA
+                TXA
+                PHA
+                JSR printd_u16
+                RTS
+printd_s16_neg  STA temp + 3
+                TXA
+                STA temp + 4
+                CLC
+                LDA #0xFF
+                EOR temp + 4
+                ADC #1
+                STA temp + 4
+                LDA #0xFF
+                EOR temp + 3
+                ADC #0
+                PHA
+                LDA temp + 4
+                PHA
+                JSR printd_u16
+                LDX #6
+printd_s16_0    LDA screen, X
+                CMP #0
+                BEQ printd_s16_1
+                DEX
+                TXA
+                CMP #2
+                BEQ printd_s16_1
+printd_s16_1    LDA #0x40 ; -
+                STA screen, X
+                RTS
+
+
+; Function printx_u16
+; Display unsigned 16-bit hexadecimal digit on the screen
+; Input: stack - number. Output: none.
+; Destroys:
+printx_u16      LDX #6
+                PLA
+                JSR putbyte
+                LDX #4
+                PLA
+                JSR putbyte
+                RTS
+
+
+; Function clear_screen
+; Clears screen (blank display)
+; Input: none. Output: none.
+; Destroys: A, X.
+clear_screen    LDA #0
+                LDX #7
+clear_screen_l  STA screen, X
+                DEX
+                BPL clear_screen_l
                 RTS
 
 
 ; Function get_screen_ptr
 ; Returns a pointer to screen frame buffer
-; Input: none. Output: stack - screen_ptr high, stack + 1 - screen_ptr low.
+; Input: none. Output: stack - screen_ptr low, stack + 1 - screen_ptr high.
 ; Destroys: A.
-get_screen_ptr  LDA #screen & 0xFF
+get_screen_ptr  LDA #screen >> 8
                 PHA
-                LDA #screen >> 8
+                LDA #screen & 0xFF
                 PHA
                 RTS
 
@@ -132,7 +351,7 @@ msleep          STA sleep_temp0
                 LDA jiffies
                 STA sleep_temp1
 msleep_loop     LDA jiffies
-                CLC
+                SEC
                 SBC sleep_temp1
                 CMP sleep_temp0
                 BMI msleep_loop
@@ -147,7 +366,7 @@ sleep           STA sleep_temp0
                 LDA time_s
                 STA sleep_temp1
 sleep_loop      LDA time_s
-                CLC
+                SEC
                 SBC sleep_temp1
                 CMP sleep_temp0
                 BMI sleep_loop
@@ -172,14 +391,17 @@ get_seconds     LDA time_s
 
 ; Function irq_register
 ; Registers user IRQ handler
-; Input: stack - function address high, stack + 1 - function address low. Output: none.
+; Input: stack - function address low, stack + 1 - function address high. Output: none.
 ; Destroys: A.
 irq_register    LDA #0
                 STA irq_valid
                 PLA
-                STA irq_ptr + 1
-                PLA
                 STA irq_ptr
+                PLA
+                STA irq_ptr + 1
+                LDA #1
+                STA irq_valid
+                SEI
                 RTS
 
 
@@ -214,7 +436,6 @@ putbyte         PHA
 ; Input: X - position. Output: screen.
 ; Destroys: A.
 dot_enable      LDA #0x10
-                CLC
                 ORA screen, X
                 STA screen, X
                 RTS
@@ -225,7 +446,6 @@ dot_enable      LDA #0x10
 ; Input: X - position. Output: screen.
 ; Destroys: A.
 dot_disable     LDA #0x2F
-                CLC
                 AND screen, X
                 STA screen, X
                 RTS
@@ -236,7 +456,6 @@ dot_disable     LDA #0x2F
 ; Input: address, mode_sel. Output: screen.
 ; Destroys: A, X, Y.
 draw_screen     LDX #0
-                LDY #0
 
                 LDA address + 1
                 JSR putbyte
@@ -250,16 +469,23 @@ draw_screen     LDX #0
                 JSR putch
                 INX
 
+                LDY #0
                 LDA (address), Y
                 JSR putbyte
 
-                LDA mode_sel
                 LDX #7
-                CMP #0
+                LDA mode_sel
                 BEQ draw_screen_e
                 LDX #3
 
-draw_screen_e   JSR dot_enable
+draw_screen_e   JMP dot_enable
+
+
+; Function get_key_nb
+; Get key code (non blocking)
+; Input: none. Output: A - key code.
+; Destroys: A
+get_key_nb      LDA keycode
                 RTS
 
 
@@ -268,20 +494,20 @@ draw_screen_e   JSR dot_enable
 ; Input: none. Output: A - key code.
 ; Destroys: A, keyb_start
 get_key         LDA keycode
-                CMP KEY_NONE
+                CMP #KEY_NONE
                 BNE get_key             ; Wait for none key pressed
                 LDA jiffies
                 STA get_key_temp        ; Begin cooldown period
 get_key_cooldwn LDA keycode
-                CMP KEY_NONE
+                CMP #KEY_NONE
                 BNE get_key             ; Check if still not pressed
                 LDA jiffies
-                CLC
+                SEC
                 SBC get_key_temp
                 CMP #KEYB_COOLDWN
                 BPL get_key_cooldwn     ; Wait for KEYB_COOLDWN jiffies
 get_key_press   LDA keycode
-                CMP KEY_NONE
+                CMP #KEY_NONE
                 BEQ get_key_press       ; Wait for key press
                 RTS
 
@@ -325,7 +551,7 @@ reset0          STA screen, X
 
                 ; Address
                 STA address
-                LDA #0x20
+                LDA #0x02
                 STA address + 1
 
                 ; Init done!
@@ -348,21 +574,20 @@ main_loop       JSR draw_screen
 
                 ; Edit address
                 CLC
-                ROL address + 1
                 ROL address
                 ROL address + 1
+                CLC
                 ROL address
                 ROL address + 1
+                CLC
                 ROL address
                 ROL address + 1
+                CLC
                 ROL address
-                LDA 0xF0
-                AND address
-                STA address
+                ROL address + 1
                 PLA
                 ORA address
                 STA address
-
                 JMP main_loop
 
 main_edit_b     LDY #0
@@ -391,10 +616,10 @@ main_dec        CMP #KEY_DEC
 
                 ; DEC key pressed - decrement address
                 LDA address
-                CLC
+                SEC
                 SBC #1
                 STA address
-                BCC main_loop
+                BCS main_loop
                 DEC address + 1
                 JMP main_loop
 
@@ -404,6 +629,7 @@ main_sel        CMP #KEY_SEL
                 ; SEL key pressed - change edit mode
                 LDA #1
                 EOR mode_sel
+                STA mode_sel
                 JMP main_loop
 
 main_go         CMP #KEY_GO
@@ -411,9 +637,9 @@ main_go         CMP #KEY_GO
 
                 ; GO key pressed - execute user program
                 ; Prepare return address
-                LDA #reset & 0xFF
-                PHA
                 LDA #reset >> 8
+                PHA
+                LDA #reset & 0xFF
                 PHA
 
                 JMP (address)
@@ -422,7 +648,7 @@ main_go         CMP #KEY_GO
 ; System functions
 
 ; Function irq
-; Handles IRQ - TODO.
+; Handles IRQ
 ; Input: None. Output: None.
 ; Destroys: None
 irq             PHA
@@ -438,9 +664,9 @@ irq             PHA
 
                 ; There's no indirect JSR we need - do it hard way
                 ; Prepare return address on stack to allow RTS
-                LDA #irq_end & 0xFF
-                PHA
                 LDA #irq_end >> 8
+                PHA
+                LDA #irq_end & 0xFF
                 PHA
 
                 ; Jump to address pointed by irq_ptr
@@ -450,8 +676,7 @@ irq_end         PLA
                 TAX
                 PLA
                 TAY
-                PLA
-irq_ret         PHA
+irq_ret         PLA
                 RTI
 
 
@@ -520,7 +745,7 @@ refresh_screen  LDX scrnptr
 refresh_screen0 TAX
                 STA scrnptr
                 LDA screen, X           ; Fetch from frame buffer
-                AND 0x3f                ; Mask out don't-matter bits
+                AND #0x3f                ; Mask out don't-matter bits
                 TAY
                 LDA lut_7seg, Y         ; Convert to 7 segment
                 LDY lut_ptr2bit, X      ; Get digit address offset
@@ -534,12 +759,11 @@ refresh_screen0 TAX
 ; Destroys: A, Y, nmi_temp
 keyboard_decode LDY #0
                 CLC ; To avoid endless loop, just in case
-kb_decode_loop  ROR
+kb_decode_loop  ROR A
                 BCC kb_decode_end
                 INY
                 BCS kb_decode_loop
-kb_decode_end   TXA
-                STA nmi_temp
+kb_decode_end   STX nmi_temp
                 TYA
                 CLC
                 ADC nmi_temp
@@ -551,48 +775,48 @@ kb_decode_end   TXA
 ; Input: None. Output: None.
 ; Destroys: A, X
 scan_keyboard   LDA KEYB_BASE + 0x3E
-                CMP 0xff
-                BNE keyboard_row1
+                CMP #0xFF
+                BEQ keyboard_row1
                 LDX #KEY_F1
                 JSR keyboard_decode
                 JMP keyboard_end
 
 keyboard_row1   LDA KEYB_BASE + 0x3D
-                CMP 0xff
-                BNE keyboard_row2
-                LDX #0xc
+                CMP #0xFF
+                BEQ keyboard_row2
+                LDX #0xC
                 JSR keyboard_decode
                 JMP keyboard_end
 
 keyboard_row2   LDA KEYB_BASE + 0x3B
-                CMP 0xff
-                BNE keyboard_row3
+                CMP #0xFF
+                BEQ keyboard_row3
                 LDX #8
                 JSR keyboard_decode
                 JMP keyboard_end
 
 keyboard_row3   LDA KEYB_BASE + 0x37
-                CMP 0xff
-                BNE keyboard_row4
+                CMP #0xFF
+                BEQ keyboard_row4
                 LDX #4
                 JSR keyboard_decode
                 JMP keyboard_end
 
 keyboard_row4   LDA KEYB_BASE + 0x2F
-                CMP 0xff
-                BNE keyboard_row5
+                CMP #0xFF
+                BEQ keyboard_row5
                 LDX #0
                 JSR keyboard_decode
                 JMP keyboard_end
 
 keyboard_row5   LDA KEYB_BASE + 0x1F
-                CMP 0xff
-                BNE keyboard_none
+                CMP #0xFF
+                BEQ keyboard_none
                 LDX #KEY_INC
                 JSR keyboard_decode
                 JMP keyboard_end
 
-keyboard_none   LDA KEY_NONE
+keyboard_none   LDA #KEY_NONE
 
 keyboard_end    STA keycode
                 RTS
@@ -600,11 +824,11 @@ keyboard_end    STA keycode
 
 ; Vectors
 
+* = RST_VECT
+dw reset
+
 * = NMI_VECT
 dw nmi
 
 * = IRQ_VECT
 dw irq
-
-* = RST_VECT
-dw reset
