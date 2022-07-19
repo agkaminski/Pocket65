@@ -4,4 +4,4 @@ all: main.crasm
 	@objcopy -Iihex fw.hex -Obinary fw.bin
 
 clean:
-	rm -f fw.hex build.log
+	@rm -f fw.hex fw.bin build.log
