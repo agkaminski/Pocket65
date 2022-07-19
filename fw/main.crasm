@@ -679,7 +679,6 @@ nmi             PHA
                 ; Early exit if init is not complete
                 ; We cannot disable NMI, so this is needed
                 LDA init_done
-                CMP 0
                 BNE nmi_end
 
                 ; Increment jiffies
