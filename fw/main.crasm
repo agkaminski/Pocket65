@@ -97,15 +97,6 @@ dw msleep         ; void msleep(time (A))
 dw sleep          ; void sleep(time (A))
 
 
-; Const storage
-
-lut_7seg        db 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71 ; Dot disabled
-                db 0xBF, 0x86, 0xDB, 0xCF, 0xE6, 0xED, 0xFD, 0x87, 0xFF, 0xEF, 0xF7, 0xFC, 0xB9, 0xDE, 0xF9, 0xF1 ; Dot enabled
-                db 0x00                                                                                           ; Digit disabled
-
-lut_ptr2bit     db 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
-
-
 ; "Business" code, handling user inputs, monitor functionality
 
 ; Function printd_u16
@@ -390,11 +381,21 @@ irq_register    LDA #0
                 RTS
 
 
+lut_7seg        db 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71 ; Dot disabled
+                db 0xBF, 0x86, 0xDB, 0xCF, 0xE6, 0xED, 0xFD, 0x87, 0xFF, 0xEF, 0xF7, 0xFC, 0xB9, 0xDE, 0xF9, 0xF1 ; Dot enabled
+                db 0x00                                                                                           ; Digit disabled
+
+
 ; Function putch
 ; Updates one char on the screen.
 ; Input: A - char, X - position. Output: screen.
-; Destroys: none.
-putch           STA screen, X
+; Destroys: Y.
+putch           PHA
+                AND #0x3F
+                TAY
+                LDA lut_7seg, Y
+                STA screen, X
+                PLA
                 RTS
 
 
@@ -420,7 +421,7 @@ putbyte         PHA
 ; Turns a dot on on position X on the screen.
 ; Input: X - position. Output: screen.
 ; Destroys: A.
-dot_enable      LDA #0x10
+dot_enable      LDA #0x80
                 ORA screen, X
                 STA screen, X
                 RTS
@@ -430,7 +431,7 @@ dot_enable      LDA #0x10
 ; Turns a dot off on position X on the screen.
 ; Input: X - position. Output: screen.
 ; Destroys: A.
-dot_disable     LDA #0x2F
+dot_disable     LDA #0x7F
                 AND screen, X
                 STA screen, X
                 RTS
@@ -448,10 +449,10 @@ draw_screen     LDX #0
                 LDA address
                 JSR putbyte
 
-                LDA #SCRN_BLANK
-                JSR putch
+                LDA #0
+                STA screen, X
                 INX
-                JSR putch
+                STA screen, X
                 INX
 
                 LDY #0
@@ -717,6 +718,9 @@ handle_timer_0  STA jiffies + 1
 handle_timer_1  RTS
 
 
+lut_ptr2bit     db 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
+
+
 ; Function refresh_screen
 ; Displays next digit on multiplexed 7 segment display
 ; Input: screen, scrnptr vars. Output: scrnptr.
@@ -730,24 +734,21 @@ refresh_screen  LDX scrnptr
 refresh_screen0 TAX
                 STA scrnptr
                 LDA screen, X           ; Fetch from frame buffer
-                AND #0x3f                ; Mask out don't-matter bits
-                TAY
-                LDA lut_7seg, Y         ; Convert to 7 segment
                 LDY lut_ptr2bit, X      ; Get digit address offset
                 STA SCRN_BASE, Y        ; Display digit
                 RTS
 
 
-keyb_scan_lut0  db 0x3E, 0x3D, 0x3B, 0x37, 0x2F, 0x1F
-keyb_scan_lut1  db KEY_F1, 0xC, 0x8, 0x4, 0x0, KEY_INC
+lut_keyb_scan_0  db 0x3E, 0x3D, 0x3B, 0x37, 0x2F, 0x1F
+lut_keyb_scan_1  db KEY_F1, 0xC, 0x8, 0x4, 0x0, KEY_INC
 
 
 ; Function scan_keyboard
 ; Scans whole keyboard, stores key code in keycode var
 ; Input: None. Output: None.
-; Destroys: A, X
+; Destroys: A, X, Y.
 scan_keyb       LDX #5                  ; loop counter
-scan_keyb_row_l LDY keyb_scan_lut0, X   ; row address offset
+scan_keyb_row_l LDY lut_keyb_scan_0, X  ; row address offset
                 LDA KEYB_BASE, Y        ; get row data
                 CMP #0xFF               ; is a key pressed on the row?
                 BNE scan_keyb_row_f
@@ -755,7 +756,7 @@ scan_keyb_row_l LDY keyb_scan_lut0, X   ; row address offset
                 BPL scan_keyb_row_l     ; are we done?
                 LDY #KEY_NONE           ; no key pressed
                 BNE scan_keyb_end
-scan_keyb_row_f LDY keyb_scan_lut1, X   ; base key of a row
+scan_keyb_row_f LDY lut_keyb_scan_1, X  ; base key of a row
                 CLC                     ; To avoid endless loop, just in case
 scan_keyb_col_l ROR A                   ; get next bit into carry
                 BCC scan_keyb_end       ; have we found collumn?
