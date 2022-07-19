@@ -725,13 +725,10 @@ lut_ptr2bit     db 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
 ; Input: screen, scrnptr vars. Output: scrnptr.
 ; Destroys: A, X, Y.
 refresh_screen  LDX scrnptr
-                INX                     ; Increment current digit
-                TXA
-                CMP #8
-                BMI refresh_screen0     ; Screen wrap-around?
-                LDA #0
-refresh_screen0 TAX
-                STA scrnptr
+                DEX
+                BPL refresh_screen0     ; Screen wrap-around?
+                LDX #7
+refresh_screen0 STX scrnptr
                 LDA screen, X           ; Fetch from frame buffer
                 LDY lut_ptr2bit, X      ; Get digit address offset
                 STA SCRN_BASE, Y        ; Display digit
