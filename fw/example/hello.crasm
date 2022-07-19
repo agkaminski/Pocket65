@@ -16,7 +16,6 @@ CODE
 
 ; User code here
 
-                svc_clear_screen
                 svc_get_screen_ptr
                 STX screen_ptr
                 STY screen_ptr + 1

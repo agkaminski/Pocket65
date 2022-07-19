@@ -543,6 +543,7 @@ main_go         CMP #KEY_GO
                 BNE main_loop ; Ignore function keys
 
                 ; GO key pressed - execute user program
+                JSR clear_screen
                 ; Prepare return address
                 LDA #reset >> 8
                 PHA
