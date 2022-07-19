@@ -1,7 +1,18 @@
-all: main.crasm
-	@crasm main.crasm -o fw.hex > build.log
-	@grep "Code length" build.log
-	@objcopy -Iihex fw.hex -Obinary fw.bin
+GOAL = fw
+
+TARGET = $(addsuffix .bin, ${GOAL})
+LOG = $(addsuffix .log, ${GOAL})
+
+.PHONY: clean
+.PRECIOUS: %.hex
+
+%.bin: %.hex
+	@objcopy -Iihex "$<" -Obinary "$@"
+
+%.hex: %.crasm
+	@crasm "$<" -o "$@" > ${LOG}
+
+all: ${TARGET}
 
 clean:
-	@rm -f fw.hex fw.bin build.log
+	@rm -f *.hex *.bin *.log

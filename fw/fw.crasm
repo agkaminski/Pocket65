@@ -75,26 +75,40 @@ CODE
 * = ROM_BEGIN
 
 ; BIOS function table
-dw reset          ; void reset(void)
-dw irq_register   ; void irq_register(irq_addr (X, Y))
-
-dw get_screen_ptr ; screen_ptr (X, Y) get_screen_ptr(void)
-dw putch          ; void putch(character (A), position (X))
-dw putbyte        ; void putch(byte (A), position (X))
-dw dot_enable     ; void dot_enable(position (X))
-dw dot_disable    ; void dot_disable(position (X))
-dw clear_screen   ; void clear_screen(void)
-dw printx_u16     ; void printx_u16(number (X, Y))
-dw printd_u16     ; void printd_u16(number (X, Y))
-dw printd_s16     ; void printd_s16(number (X, Y))
-
-dw get_key        ; key_code (A) get_key(void)
-dw get_key_nb     ; key_code (A) get_key_nb(void)
-
-dw get_jiffies    ; jffies (A) get_jiffies(void)
-dw get_seconds    ; seconds (A) get_seconds(void)
-dw msleep         ; void msleep(time (A))
-dw sleep          ; void sleep(time (A))
+                JMP reset               ; void reset(void)
+                RTS
+                JMP irq_register        ; void irq_register(irq_addr (X, Y))
+                RTS
+                JMP get_screen_ptr      ; void screen_ptr (X, Y) get_screen_ptr(void)
+                RTS
+                JMP putch               ; void putch(character (A), position (X))
+                RTS
+                JMP putbyte             ; void putbyte(byte (A), position (X)
+                RTS
+                JMP dot_enable          ; void dot_enable(position (X))
+                RTS
+                JMP dot_disable         ; void dot_disable(position (X))
+                RTS
+                JMP clear_screen        ; void clear_screen(void)
+                RTS
+                JMP printx_u16          ; void printx_u16(number (X, Y))
+                RTS
+                JMP printd_u16          ; void printd_u16(number (X, Y))
+                RTS
+                JMP printd_s16          ; void printd_s16(number (X, Y))
+                RTS
+                JMP get_key             ; key_code (A) get_key(void)
+                RTS
+                JMP get_key_nb          ; key_code (A) get_key_nb(void)
+                RTS
+                JMP get_jiffies         ; jffies (A) get_jiffies(void)
+                RTS
+                JMP get_seconds         ; seconds (A) get_seconds(void)
+                RTS
+                JMP msleep              ; void msleep(time (A))
+                RTS
+                JMP sleep               ; void sleep(time (A))
+                RTS
 
 
 ; "Business" code, handling user inputs, monitor functionality
