@@ -75,7 +75,7 @@ CODE
 * = ROM_BEGIN
 
 ; BIOS function table
-                JMP reset               ; void reset(void)
+                JMP reset_warm          ; void reset(void)
                 RTS
                 JMP irq_register        ; void irq_register(irq_addr (X, Y))
                 RTS
@@ -423,7 +423,31 @@ get_key_press   LDA keycode
 ; Entry point.
 reset           LDA #0xff
                 STA init_done
-                CLI
+
+                ; Zero out user RAM
+                LDX #0
+reset_l0        LDA #0
+                STA 0, X
+                INX
+                TXA
+                CMP #0xE0
+                BNE reset_l0
+
+                LDA #0x00
+                STA temp
+                LDA #0x02
+                STA temp + 1
+reset_l1        LDX #0
+                LDA #0
+reset_l2        STA (temp, X)
+                INX
+                BNE reset_l2
+                INC temp + 1
+                LDA temp + 1
+                CMP #9
+                BNE reset_l1
+
+reset_warm      CLI
                 CLD
 
                 ; Setup stack
@@ -545,9 +569,9 @@ main_go         CMP #KEY_GO
                 ; GO key pressed - execute user program
                 JSR clear_screen
                 ; Prepare return address
-                LDA #reset >> 8
+                LDA #reset_warm >> 8
                 PHA
-                LDA #reset & 0xFF
+                LDA #reset_warm & 0xFF
                 PHA
 
                 JMP (address)
