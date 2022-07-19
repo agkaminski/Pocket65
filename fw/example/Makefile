@@ -1,7 +1,6 @@
-EXAMPLES = hello
+EXAMPLES = hello fibonacci
 
 TARGET = $(addsuffix .bin, ${EXAMPLES})
-LOG = $(addsuffix .log, ${EXAMPLES})
 
 .PHONY: clean
 .PRECIOUS: %.hex
@@ -10,7 +9,7 @@ LOG = $(addsuffix .log, ${EXAMPLES})
 	@objcopy -Iihex "$<" -Obinary "$@"
 
 %.hex: %.crasm
-	@crasm "$<" -o "$@" > ${LOG}
+	crasm "$<" -o "$@" >> build.log
 
 all: ${TARGET}
 

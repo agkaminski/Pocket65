@@ -1,7 +1,6 @@
 GOAL = fw
 
 TARGET = $(addsuffix .bin, ${GOAL})
-LOG = $(addsuffix .log, ${GOAL})
 
 .PHONY: clean
 .PRECIOUS: %.hex
@@ -10,7 +9,7 @@ LOG = $(addsuffix .log, ${GOAL})
 	@objcopy -Iihex "$<" -Obinary "$@"
 
 %.hex: %.crasm
-	@crasm "$<" -o "$@" > ${LOG}
+	@crasm "$<" -o "$@" > build.log
 
 all: ${TARGET}
 
