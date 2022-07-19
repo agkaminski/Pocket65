@@ -27,7 +27,7 @@ hello_loop      LDA hello_str, Y
                 CMP #5
                 BMI hello_loop
                 svc_get_key
-                svc_reset
+                RTS
 
 hello_str       db 0x76, 0x79, 0x38, 0x38, 0x3F
 
