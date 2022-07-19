@@ -99,192 +99,99 @@ dw sleep          ; void sleep(time (A))
 
 ; "Business" code, handling user inputs, monitor functionality
 
+
+; Function printd_s16
+; Display signed 16-bit decimal digit on the screen
+; Input: X, Y - number. Output: none.
+; Destroys:
+printd_s16      TYA
+                BPL printd_u16          ; Just call printd_u16 if positive
+                STX temp                ; Otherwise negate the number
+                LDA #0xFF               ; to get the positive.
+                EOR temp
+                CLC
+                ADC #1
+                TAX
+                STY temp
+                LDA #0xFF
+                EOR temp
+                ADC #0
+                TAY
+                JSR printd_u16
+                LDX #6                  ; Find screen position for minus sign
+printd_s16_l    LDA screen, X
+                AND #0x7F
+                BEQ printd_s16_e
+                DEX
+                TXA
+                CMP #2
+                BPL printd_s16_l
+printd_s16_e    LDA #0x40               ; minus sign
+                STA screen, X
+                RTS
+
+
 ; Function printd_u16
 ; Display unsigned 16-bit decimal digit on the screen
-; Input: stack - number. Output: none.
-; Destroys:
+; Based on double-dabble algorithm
+; Input: X, Y - number. Output: none.
+; Destroys: A, X, Y.
 printd_u16      LDA #0
                 STA temp
                 STA temp + 1
                 STA temp + 2
                 STY temp + 3
                 STX temp + 4
-                LDX #16
-printd_u16_l0   CLC                     ; loop 1 - shift 16 times
-printd_u16_l1   LDY #4                  ; loop 2 - shift all once
-                LDA temp, Y
-                ROL
-                STA temp, Y
-                DEY
+                LDY #15
+printd_u16_l0   LDX #2                  ; loop 3 - check all nibbles if < 5
+printd_u16_l2   LDA temp, X             ; add 3 otherwise
+                AND #0x0F
+                CMP #0x05
+                BMI printd_u16_l2s
+                LDA temp, X
+                CLC
+                ADC #0x03
+                STA temp, X
+printd_u16_l2s  LDA temp, X
+                AND #0xF0
+                CMP #0x50
+                BMI printd_u16_l2e
+                LDA temp, X
+                CLC
+                ADC #0x30
+                STA temp, X
+printd_u16_l2e  DEX
+                BPL printd_u16_l2
+
+                CLC                     ; loop 1 - shift 16 times
+                LDX #4                  ; loop 2 - shift all left once
+printd_u16_l1   ROL temp, X
+                DEX
                 BPL printd_u16_l1
 
-                LDA temp + 2
-                AND #0x0F
-                CMP #0x05
-                BMI printd_u16_0
-                LDA temp + 2
-                CLC
-                ADC #0x03
-                STA temp + 2
-                LDA temp + 1
-                ADC #0
-                STA temp + 1
-                LDA temp
-                ADC #0
-                STA temp
-
-printd_u16_0    LDA temp + 2
-                AND #0xF0
-                CMP #0x50
-                BMI printd_u16_1
-                LDA temp + 2
-                CLC
-                ADC #0x30
-                STA temp + 2
-                LDA temp + 1
-                ADC #0
-                STA temp + 1
-                LDA temp
-                ADC #0
-                STA temp
-
-printd_u16_1    LDA temp + 1
-                AND #0x0F
-                CMP #0x05
-                BMI printd_u16_2
-                LDA temp + 1
-                CLC
-                ADC #0x03
-                STA temp + 1
-                LDA temp
-                ADC #0
-                STA temp
-
-printd_u16_2    LDA temp + 1
-                AND #0xF0
-                CMP #0x50
-                BMI printd_u16_3
-                LDA temp + 1
-                CLC
-                ADC #0x30
-                STA temp + 1
-                LDA temp
-                ADC #0
-                STA temp
-
-printd_u16_3    LDA temp
-                AND #0x0F
-                CMP #0x05
-                BMI printd_u16_4
-                LDA temp
-                CLC
-                ADC #0x03
-                STA temp
-
-printd_u16_4    DEX
+                DEY
                 BPL printd_u16_l0
 
-                LDX #3
-
+                LDX #2                  ; print whole the number (justified to the right)
                 LDA temp
-                LSR
-                LSR
-                LSR
-                LSR
-                JSR putch
-
-                LDA temp
-                AND #0x0F
-                INX
-                JSR putch
-
+                JSR putbyte
                 LDA temp + 1
-                LSR
-                LSR
-                LSR
-                LSR
-                INX
-                JSR putch
-
-                LDA temp + 1
-                AND #0x0F
-                INX
-                JSR putch
-
-                LDA temp
-                LSR
-                LSR
-                LSR
-                LSR
-                INX
-                JSR putch
-
+                JSR putbyte
                 LDA temp + 2
-                AND #0x0F
+                JSR putbyte
+
+                LDX #2                  ; clear leading zeroes
+printd_u16_l3   LDA screen, X
+                CMP lut_7seg            ; compare with '0' 7-segment
+                BNE printd_u16_l3e
+                LDA #0
+                STA screen, X
                 INX
-                JSR putch
-
-                LDX #3
-
-                LDA temp
-                BNE printd_u16_5
-                STA screen, X
-
-printd_u16_5    INX
-                LDA temp + 1
-                AND #0xF0
-                BNE printd_u16_6
-                STA screen, X
-
-printd_u16_6    INX
-                LDA temp + 1
-                AND #0x0F
-                BNE printd_u16_7
-                STA screen, X
-
-printd_u16_7    INX
-                LDA temp
-                AND #0xF0
-                BNE printd_u16_8
-                STA screen, X
-
-printd_u16_8    RTS
-
-
-; Function printd_s16
-; Display signed 16-bit decimal digit on the screen
-; Input: X, Y - number. Output: none.
-; Destroys:
-printd_s16      LDA #0
-                STA temp + 5
-                TYA
-                BMI printd_s16_neg
-                JSR printd_u16
-                RTS
-printd_s16_neg  STY temp + 3
-                STX temp + 4
-                CLC
-                LDA #0xFF
-                EOR temp + 4
-                ADC #1
-                STA temp + 4
-                LDA #0xFF
-                EOR temp + 3
-                ADC #0
-                TAY
-                LDX temp + 4
-                JSR printd_u16
-                LDX #6
-printd_s16_0    LDA screen, X
-                CMP #0
-                BEQ printd_s16_1
-                DEX
                 TXA
-                CMP #2
-                BEQ printd_s16_1
-printd_s16_1    LDA #0x40 ; -
-                STA screen, X
-                RTS
+                CMP #7                  ; don't clear last zero
+                BNE printd_u16_l3
+
+printd_u16_l3e  RTS
 
 
 ; Function printx_u16
@@ -316,7 +223,7 @@ clear_screen_l  STA screen, X
 ; Function get_screen_ptr
 ; Returns a pointer to screen frame buffer
 ; Input: none. Output: X, Y - screen pointer
-; Destroys: A.
+; Destroys: None.
 get_screen_ptr  LDY #screen >> 8
                 LDX #screen & 0xFF
                 RTS
