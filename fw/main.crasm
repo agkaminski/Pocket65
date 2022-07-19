@@ -290,10 +290,10 @@ printd_s16_1    LDA #0x40 ; -
 ; Function printx_u16
 ; Display unsigned 16-bit hexadecimal digit on the screen
 ; Input: X, Y - number. Output: none.
-; Destroys:
+; Destroys: A, X, Y.
 printx_u16      TXA
                 PHA
-                LDX #6
+                LDX #4
                 TYA
                 JSR putbyte
                 PLA
