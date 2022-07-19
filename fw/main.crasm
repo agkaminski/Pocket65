@@ -43,7 +43,7 @@ KEYB_COOLDWN equ 50
 DUMMY
 
 ; Zero page variables
-* = RAM_BEGIN
+* = RAM_BEGIN + 0xE0
 
 ; Accessed by NMI
 init_done       ds 1 ; 0 - init done, others - NMI shouldn't do it's tasks
