@@ -56,8 +56,6 @@ keycode         ds 1
 jiffies         ds 2 ; Only for NMI use - non-atomic access
 time_s          ds 1
 
-nmi_temp        ds 1
-
 ; Not accessed by NMI
 
 temp            ds 6
@@ -688,7 +686,7 @@ nmi             PHA
 
                 ; Handle UI
                 JSR refresh_screen
-                JSR scan_keyboard
+                JSR scan_keyb
 
                 ; Clear NMI to allow a next one to occur
                 ; Dummy write to preset 74HC74 flip-flop
@@ -740,22 +738,6 @@ refresh_screen0 TAX
                 RTS
 
 
-; Function keyboard_decode
-; Decodes keyboard row to key code
-; Input: A - keyboard row, X - value to add. Output: A - key code.
-; Destroys: A, Y, nmi_temp
-keyboard_decode LDX #0
-                CLC ; To avoid endless loop, just in case
-kb_decode_loop  ROR A
-                BCC kb_decode_end
-                INX
-                BCS kb_decode_loop
-kb_decode_end   STY nmi_temp
-                TXA
-                CLC
-                ADC nmi_temp
-                RTS
-
 keyb_scan_lut0  db 0x3E, 0x3D, 0x3B, 0x37, 0x2F, 0x1F
 keyb_scan_lut1  db KEY_F1, 0xC, 0x8, 0x4, 0x0, KEY_INC
 
@@ -764,18 +746,22 @@ keyb_scan_lut1  db KEY_F1, 0xC, 0x8, 0x4, 0x0, KEY_INC
 ; Scans whole keyboard, stores key code in keycode var
 ; Input: None. Output: None.
 ; Destroys: A, X
-scan_keyboard   LDX #5
-scan_keyboard_l LDY keyb_scan_lut0, X
-                LDA KEYB_BASE, Y
-                CMP #0xFF
-                BNE scan_keyboard_f
+scan_keyb       LDX #5                  ; loop counter
+scan_keyb_row_l LDY keyb_scan_lut0, X   ; row address offset
+                LDA KEYB_BASE, Y        ; get row data
+                CMP #0xFF               ; is a key pressed on the row?
+                BNE scan_keyb_row_f
                 DEX
-                BPL scan_keyboard_l
-                LDA #KEY_NONE
-                BNE scan_keyboard_e
-scan_keyboard_f LDY keyb_scan_lut1, X
-                JSR keyboard_decode
-scan_keyboard_e STA keycode
+                BPL scan_keyb_row_l     ; are we done?
+                LDY #KEY_NONE           ; no key pressed
+                BNE scan_keyb_end
+scan_keyb_row_f LDY keyb_scan_lut1, X   ; base key of a row
+                CLC                     ; To avoid endless loop, just in case
+scan_keyb_col_l ROR A                   ; get next bit into carry
+                BCC scan_keyb_end       ; have we found collumn?
+                INY                     ; select next key in a row
+                BCS scan_keyb_col_l     ; branch always
+scan_keyb_end   STY keycode
                 RTS
 
 
