@@ -757,68 +757,38 @@ refresh_screen0 TAX
 ; Decodes keyboard row to key code
 ; Input: A - keyboard row, X - value to add. Output: A - key code.
 ; Destroys: A, Y, nmi_temp
-keyboard_decode LDY #0
+keyboard_decode LDX #0
                 CLC ; To avoid endless loop, just in case
 kb_decode_loop  ROR A
                 BCC kb_decode_end
-                INY
+                INX
                 BCS kb_decode_loop
-kb_decode_end   STX nmi_temp
-                TYA
+kb_decode_end   STY nmi_temp
+                TXA
                 CLC
                 ADC nmi_temp
                 RTS
+
+keyb_scan_lut0  db 0x3E, 0x3D, 0x3B, 0x37, 0x2F, 0x1F
+keyb_scan_lut1  db KEY_F1, 0xC, 0x8, 0x4, 0x0, KEY_INC
 
 
 ; Function scan_keyboard
 ; Scans whole keyboard, stores key code in keycode var
 ; Input: None. Output: None.
 ; Destroys: A, X
-scan_keyboard   LDA KEYB_BASE + 0x3E
+scan_keyboard   LDX #5
+scan_keyboard_l LDY keyb_scan_lut0, X
+                LDA KEYB_BASE, Y
                 CMP #0xFF
-                BEQ keyboard_row1
-                LDX #KEY_F1
+                BNE scan_keyboard_f
+                DEX
+                BPL scan_keyboard_l
+                LDA #KEY_NONE
+                BNE scan_keyboard_e
+scan_keyboard_f LDY keyb_scan_lut1, X
                 JSR keyboard_decode
-                JMP keyboard_end
-
-keyboard_row1   LDA KEYB_BASE + 0x3D
-                CMP #0xFF
-                BEQ keyboard_row2
-                LDX #0xC
-                JSR keyboard_decode
-                JMP keyboard_end
-
-keyboard_row2   LDA KEYB_BASE + 0x3B
-                CMP #0xFF
-                BEQ keyboard_row3
-                LDX #8
-                JSR keyboard_decode
-                JMP keyboard_end
-
-keyboard_row3   LDA KEYB_BASE + 0x37
-                CMP #0xFF
-                BEQ keyboard_row4
-                LDX #4
-                JSR keyboard_decode
-                JMP keyboard_end
-
-keyboard_row4   LDA KEYB_BASE + 0x2F
-                CMP #0xFF
-                BEQ keyboard_row5
-                LDX #0
-                JSR keyboard_decode
-                JMP keyboard_end
-
-keyboard_row5   LDA KEYB_BASE + 0x1F
-                CMP #0xFF
-                BEQ keyboard_none
-                LDX #KEY_INC
-                JSR keyboard_decode
-                JMP keyboard_end
-
-keyboard_none   LDA #KEY_NONE
-
-keyboard_end    STA keycode
+scan_keyboard_e STA keycode
                 RTS
 
 
