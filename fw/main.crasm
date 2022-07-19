@@ -78,17 +78,17 @@ CODE
 
 ; BIOS function table
 dw reset          ; void reset(void)
-dw irq_register   ; void irq_register(irq_addr (stack))
+dw irq_register   ; void irq_register(irq_addr (X, Y))
 
-dw get_screen_ptr ; screen_ptr (stack) get_screen_ptr(void)
+dw get_screen_ptr ; screen_ptr (X, Y) get_screen_ptr(void)
 dw putch          ; void putch(character (A), position (X))
 dw putbyte        ; void putch(byte (A), position (X))
 dw dot_enable     ; void dot_enable(position (X))
 dw dot_disable    ; void dot_disable(position (X))
 dw clear_screen   ; void clear_screen(void)
-dw printx_u16     ; void printx_u16(number (stack))
-dw printd_u16     ; void printd_u16(number (stack))
-dw printd_s16     ; void printd_s16(number (stack))
+dw printx_u16     ; void printx_u16(number (X, Y))
+dw printd_u16     ; void printd_u16(number (X, Y))
+dw printd_s16     ; void printd_s16(number (X, Y))
 
 dw get_key        ; key_code (A) get_key(void)
 dw get_key_nb     ; key_code (A) get_key_nb(void)
@@ -118,10 +118,8 @@ printd_u16      LDA #0
                 STA temp
                 STA temp + 1
                 STA temp + 2
-                PLA
-                STA temp + 3
-                PLA
-                STA temp + 4
+                STY temp + 3
+                STX temp + 4
                 LDX #16
 printd_u16_l0   CLC                     ; loop 1 - shift 16 times
 printd_u16_l1   LDY #4                  ; loop 2 - shift all once
@@ -266,22 +264,16 @@ printd_u16_8    RTS
 
 ; Function printd_s16
 ; Display signed 16-bit decimal digit on the screen
-; Input: stack - number. Output: none.
+; Input: X, Y - number. Output: none.
 ; Destroys:
 printd_s16      LDA #0
                 STA temp + 5
-                PLA
-                TAX
-                PLA
+                TYA
                 BMI printd_s16_neg
-                PHA
-                TXA
-                PHA
                 JSR printd_u16
                 RTS
-printd_s16_neg  STA temp + 3
-                TXA
-                STA temp + 4
+printd_s16_neg  STY temp + 3
+                STX temp + 4
                 CLC
                 LDA #0xFF
                 EOR temp + 4
@@ -290,9 +282,8 @@ printd_s16_neg  STA temp + 3
                 LDA #0xFF
                 EOR temp + 3
                 ADC #0
-                PHA
-                LDA temp + 4
-                PHA
+                TAY
+                LDX temp + 4
                 JSR printd_u16
                 LDX #6
 printd_s16_0    LDA screen, X
@@ -309,12 +300,13 @@ printd_s16_1    LDA #0x40 ; -
 
 ; Function printx_u16
 ; Display unsigned 16-bit hexadecimal digit on the screen
-; Input: stack - number. Output: none.
+; Input: X, Y - number. Output: none.
 ; Destroys:
-printx_u16      LDX #6
-                PLA
+printx_u16      TXA
+                PHA
+                LDX #6
+                TYA
                 JSR putbyte
-                LDX #4
                 PLA
                 JSR putbyte
                 RTS
@@ -334,12 +326,10 @@ clear_screen_l  STA screen, X
 
 ; Function get_screen_ptr
 ; Returns a pointer to screen frame buffer
-; Input: none. Output: stack - screen_ptr low, stack + 1 - screen_ptr high.
+; Input: none. Output: X, Y - screen pointer
 ; Destroys: A.
-get_screen_ptr  LDA #screen >> 8
-                PHA
-                LDA #screen & 0xFF
-                PHA
+get_screen_ptr  LDY #screen >> 8
+                LDX #screen & 0xFF
                 RTS
 
 
@@ -391,17 +381,14 @@ get_seconds     LDA time_s
 
 ; Function irq_register
 ; Registers user IRQ handler
-; Input: stack - function address low, stack + 1 - function address high. Output: none.
+; Input: X, Y - irq handler pointer. Output: none.
 ; Destroys: A.
 irq_register    LDA #0
                 STA irq_valid
-                PLA
-                STA irq_ptr
-                PLA
-                STA irq_ptr + 1
+                STX irq_ptr
+                STY irq_ptr + 1
                 LDA #1
                 STA irq_valid
-                SEI
                 RTS
 
 
