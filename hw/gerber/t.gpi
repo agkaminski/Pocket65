@@ -1,6 +1,6 @@
 Photoplotter Info File: t.gpi
 
- Date              : 2022-07-15 23:57
+ Date              : 2022-07-20 18:36
  Plotfile          : t.gtl
  Apertures         : generated:
  Device            : Gerber RS-274-X photoplotter, coordinate format 2.5 inch
@@ -45,10 +45,10 @@ Apertures used:
  D21      round     0.1350inch               2
  D22      octagon   0.0630inch               3
  D23      round     0.0630inch               3
- D24      draw      0.0100inch           24092
+ D24      draw      0.0100inch           24096
  D25      round     0.0357inch             721
  D26      draw      0.0240inch             189
- D27      draw      0.0080inch            1872
+ D27      draw      0.0080inch            1871
  D28      draw      0.0160inch             188
  D29      draw      0.0120inch               8
 
