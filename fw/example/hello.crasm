@@ -20,14 +20,13 @@ CODE
                 STX screen_ptr
                 STY screen_ptr + 1
                 LDY #0
-hello_loop      LDA hello_str, Y
+loop            LDA hello_str, Y
+                BEQ end
                 STA (screen_ptr), Y
                 INY
-                TYA
-                CMP #5
-                BMI hello_loop
-                svc_get_key
+                BNE loop
+end             svc_get_key
                 RTS
 
-hello_str       db 0x76, 0x79, 0x38, 0x38, 0x3F
+hello_str       db 0x76, 0x79, 0x38, 0x38, 0x3F, 0x00
 
