@@ -117,7 +117,7 @@ CODE
 ; Function printd_s16
 ; Display signed 16-bit decimal digit on the screen
 ; Input: X, Y - number. Output: none.
-; Destroys:
+; Destroys: A, X, Y, temp.
 printd_s16      TYA
                 BPL printd_u16          ; Just call printd_u16 if positive
                 STX temp                ; Otherwise negate the number
@@ -149,7 +149,7 @@ printd_s16_e    LDA #0x40               ; minus sign
 ; Display unsigned 16-bit decimal digit on the screen
 ; Based on double-dabble algorithm
 ; Input: X, Y - number. Output: none.
-; Destroys: A, X, Y.
+; Destroys: A, X, Y, temp.
 printd_u16      LDA #0
                 STA temp
                 STA temp + 1
@@ -211,7 +211,7 @@ printd_u16_l3e  RTS
 ; Function printx_u16
 ; Display unsigned 16-bit hexadecimal digit on the screen
 ; Input: X, Y - number. Output: none.
-; Destroys: A, X, Y.
+; Destroys: A, X.
 printx_u16      TXA
                 PHA
                 LDX #4
@@ -655,7 +655,7 @@ handle_timer    INC jiffies
                 LDX jiffies + 1
                 INX
                 TXA
-                CMP #NMI_HZ / 256
+                CMP #NMI_HZ / 256 - 1
                 BMI handle_timer_0
                 INC time_s
                 LDA #0
