@@ -229,10 +229,13 @@ printx_u16      TXA
 
 
 ; Function scanx_u16
-; Gets user input as 16-bit hex number
+; Gets user input as an unsigned 16-bit hex number
 ; Input: none. Output: X, Y - number.
 ; Destroys: A, X, Y.
-scanx_u16       LDA #0
+scanx_u16       JSR clear_screen
+                LDA #0x76 ; H
+                STA screen
+                LDA #0
                 STA scan_temp
                 STA scan_temp + 1
 scanx_u16_l0    LDX scan_temp
