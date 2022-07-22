@@ -56,6 +56,9 @@ keycode         ds 1
 jiffies         ds 2 ; Only for NMI use - non-atomic access
 time_s          ds 1
 
+autoinc         ds 1
+autoinc_cnt     ds 1
+
 ; Not accessed by NMI
 
 temp            ds 6
@@ -414,10 +417,15 @@ draw_screen     LDX #0
                 LDA (address), Y
                 JSR putbyte
 
-                LDX #7
-                LDA mode_sel
-                BEQ draw_screen_e
+                LDA autoinc
+                BEQ draw_screen_s
                 LDX #3
+                JSR dot_enable
+
+draw_screen_s   LDX #3
+                LDA mode_sel
+                BNE draw_screen_e
+                LDX #7
 
 draw_screen_e   JMP dot_enable
 
@@ -509,6 +517,10 @@ reset0          STA screen, X
                 STA jiffies + 1
                 STA time_s
 
+                ; Auto increment feature default off
+                STA autoinc
+                STA autoinc_cnt
+
                 ; IRQ handling
                 STA irq_ptr
                 STA irq_ptr + 1
@@ -565,7 +577,19 @@ main_edit_b     LDY #0
                 PLA
                 ORA temp
                 STA (address), Y
-                JMP main_loop
+
+                LDA autoinc
+                BEQ main_loop
+
+                INC autoinc_cnt
+                LDA autoinc_cnt
+                CMP #2
+                BNE main_loop
+
+                LDA #0
+                STA autoinc_cnt
+
+                LDA #KEY_INC ; so we'll do main_inc below
 
 main_inc        CMP #KEY_INC
                 BNE main_dec
@@ -598,7 +622,7 @@ main_sel        CMP #KEY_SEL
                 JMP main_loop
 
 main_go         CMP #KEY_GO
-                BNE main_loop ; Ignore function keys
+                BNE main_f1
 
                 ; GO key pressed - execute user program
                 JSR clear_screen
@@ -609,6 +633,19 @@ main_go         CMP #KEY_GO
                 PHA
 
                 JMP (address)
+
+main_f1         CMP #KEY_F1
+                BNE main_end
+
+                ; F1 key pressed - toggle auto increment mode
+                LDA #0xFF
+                EOR autoinc
+                STA autoinc
+
+                LDA #0
+                STA autoinc_cnt
+
+main_end        JMP main_loop
 
 
 ; System functions
