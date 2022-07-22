@@ -59,6 +59,7 @@ time_s          ds 1
 ; Not accessed by NMI
 
 temp            ds 6
+scan_temp       ds 2
 get_key_temp    ds 1
 sleep_temp0     ds 1
 sleep_temp1     ds 1
@@ -96,6 +97,8 @@ CODE
                 JMP printd_u16          ; void printd_u16(number (X, Y))
                 RTS
                 JMP printd_s16          ; void printd_s16(number (X, Y))
+                RTS
+                JMP scanx_u16           ; number (X, Y) scanx_u16(void)
                 RTS
                 JMP get_key             ; key_code (A) get_key(void)
                 RTS
@@ -219,6 +222,37 @@ printx_u16      TXA
                 JSR putbyte
                 PLA
                 JSR putbyte
+                RTS
+
+
+; Function scanx_u16
+; Gets user input as 16-bit hex number
+; Input: none. Output: X, Y - number.
+; Destroys: A, X, Y.
+scanx_u16       LDA #0
+                STA scan_temp
+                STA scan_temp + 1
+scanx_u16_l0    LDX scan_temp
+                LDY scan_temp + 1
+                JSR printx_u16
+scanx_u16_l1    JSR get_key
+                CMP #KEY_GO
+                BEQ scanx_u16_e
+                CMP #15
+                BPL scanx_u16_l1
+                ASL A
+                ASL A
+                ASL A
+                ASL A
+                LDX #3
+scanx_u16_l2    ROL A
+                ROL scan_temp
+                ROL scan_temp + 1
+                DEX
+                BPL scanx_u16_l2
+                BMI scanx_u16_l0
+scanx_u16_e     LDX scan_temp
+                LDY scan_temp + 1
                 RTS
 
 
