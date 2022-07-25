@@ -144,8 +144,7 @@ printd_s16_l    LDA screen, X
                 AND #0x7F
                 BEQ printd_s16_e
                 DEX
-                TXA
-                CMP #2
+                CPX #2
                 BPL printd_s16_l
 printd_s16_e    LDA #0x40               ; minus sign
                 STA screen, X
@@ -316,8 +315,7 @@ scand_u16_l1    JSR clear_screen        ; main loop
 scand_u16_l2    LDA temp, Y             ; skip leading zeroes
                 BNE scand_u16_s0
                 INY
-                TYA
-                CMP #4
+                CPY #4
                 BMI scand_u16_l2
 
 scand_u16_s0    TYA
@@ -333,8 +331,7 @@ scand_u16_l3    TYA
                 TAY
                 INY
                 INX
-                TXA
-                CMP #8
+                CPX #8
                 BMI scand_u16_l3
 
 scand_u16_l4    JSR get_key             ; wait for valid input
@@ -354,8 +351,7 @@ scand_u16_s1    LDX #0
 scand_u16_s1l0  LDA temp + 1, X         ; shift all left and store new digit
                 STA temp, X
                 INX
-                TXA
-                CMP #4
+                CPX #4
                 BMI scand_u16_s1l0
                 PLA
                 STA temp + 4
@@ -649,13 +645,11 @@ reset           LDA #0xff
                 STA init_done
 
                 ; Zero out user RAM
-                LDX #0
+                LDX #0xDF
 reset_l0        LDA #0
                 STA 0, X
-                INX
-                TXA
-                CMP #0xE0
-                BNE reset_l0
+                DEX
+                BPL reset_l0
 
                 LDA #0x00
                 STA temp
@@ -907,12 +901,11 @@ handle_timer    INC jiffies
                 BNE handle_timer_1
                 LDX jiffies + 1
                 INX
-                TXA
-                CMP #NMI_HZ / 256 - 1
+                CPX #NMI_HZ / 256 - 1
                 BMI handle_timer_0
                 INC time_s
-                LDA #0
-handle_timer_0  STA jiffies + 1
+                LDX #0
+handle_timer_0  STX jiffies + 1
 handle_timer_1  RTS
 
 
