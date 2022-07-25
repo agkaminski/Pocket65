@@ -152,6 +152,41 @@ printd_s16_e    LDA #0x40               ; minus sign
                 RTS
 
 
+; Function printd_u16_pb
+; Same as putbyte, but skip leadin zeroes
+; Input: A - number. Output: none.
+; Destroys: temp + 3.
+printd_u16_pb   PHA
+                LDA temp + 3
+                BNE printd_u16_pbj      ; zeroes skipped, just do putbyte
+
+                PLA
+                BEQ printd_u16_pbb      ; zeroes not skipped, we go zeroes, do nothing
+
+                PHA
+                AND #0xF0
+                BNE printd_u16_ps0
+
+                INX
+                PLA
+                JSR putch
+                INX
+
+                LDA #0xFF               ; zeroes skipped
+                STA temp + 3
+                RTS
+
+printd_u16_ps0  LDA #0xFF               ; non-zero on MSB, set flag and go to putbyte
+                STA temp + 3
+
+printd_u16_pbj  PLA
+                JMP putbyte
+
+printd_u16_pbb  INX
+                INX
+                RTS
+
+
 ; Function printd_u16
 ; Display unsigned 16-bit decimal digit on the screen
 ; Based on double-dabble algorithm
@@ -193,24 +228,23 @@ printd_u16_l1   ROL temp, X
                 DEY
                 BPL printd_u16_l0
 
+                LDA #0
+                STA temp + 3            ; set zeroes non skipped flag
+
                 LDX #2                  ; print whole the number (justified to the right)
                 LDA temp
-                JSR putbyte
+                JSR printd_u16_pb
                 LDA temp + 1
-                JSR putbyte
+                JSR printd_u16_pb
                 LDA temp + 2
-                JSR putbyte
+                JSR printd_u16_pb
 
-                LDX #2                  ; clear leading zeroes
-printd_u16_l3   LDA screen, X
-                CMP lut_7seg            ; compare with '0' 7-segment
-                BNE printd_u16_l3e
+                LDA temp + 3
+                BNE printd_u16_l3e      ; have we got all zeroes and skipped whole number?
+
                 LDA #0
-                STA screen, X
-                INX
-                TXA
-                CMP #7                  ; don't clear last zero
-                BNE printd_u16_l3
+                LDX #7
+                JSR putch
 
 printd_u16_l3e  RTS
 
