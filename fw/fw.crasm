@@ -304,7 +304,7 @@ scanx_u16_e     JSR clear_screen
 ; Destroys: A, X, Y.
 scand_u16       LDA #0
                 LDX #4
-scand_u16_l0    STA temp, X        ; init to zeroes
+scand_u16_l0    STA temp, X             ; init to zeroes
                 DEX
                 BPL scand_u16_l0
 
@@ -313,7 +313,7 @@ scand_u16_l1    JSR clear_screen        ; main loop
                 STA screen
 
                 LDY #0
-scand_u16_l2    LDA temp, Y        ; skip leading zeroes
+scand_u16_l2    LDA temp, Y             ; skip leading zeroes
                 BNE scand_u16_s0
                 INY
                 TYA
@@ -327,7 +327,7 @@ scand_u16_s0    TYA
 
 scand_u16_l3    TYA
                 PHA
-                LDA temp, Y        ; print current number
+                LDA temp, Y             ; print current number
                 JSR putch
                 PLA
                 TAY
@@ -351,7 +351,7 @@ scand_u16_l4    JSR get_key             ; wait for valid input
                 JMP scand_u16_l4        ; we already have 5 digits
 
 scand_u16_s1    LDX #0
-scand_u16_s1l0  LDA temp + 1, X    ; shift all left and store new digit
+scand_u16_s1l0  LDA temp + 1, X         ; shift all left and store new digit
                 STA temp, X
                 INX
                 TXA
@@ -362,7 +362,7 @@ scand_u16_s1l0  LDA temp + 1, X    ; shift all left and store new digit
                 JMP scand_u16_l1
 
 scand_u16_bs    LDX #3
-scand_u16_bsl0  LDA temp, X        ; shift all right
+scand_u16_bsl0  LDA temp, X             ; shift all right
                 STA temp + 1, X
                 DEX
                 BPL scand_u16_bsl0
