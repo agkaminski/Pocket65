@@ -59,7 +59,6 @@ time_s          ds 1
 ; Not accessed by NMI
 
 temp            ds 6
-scan_temp       ds 2
 get_key_temp    ds 1
 sleep_temp0     ds 1
 sleep_temp1     ds 1
@@ -102,6 +101,8 @@ CODE
                 JMP printd_s16          ; void printd_s16(number (X, Y))
                 RTS
                 JMP scanx_u16           ; number (X, Y) scanx_u16(void)
+                RTS
+                JMP scand_u16           ; number (X, Y) scand_u16(void)
                 RTS
                 JMP get_key             ; key_code (A) get_key(void)
                 RTS
@@ -236,10 +237,10 @@ scanx_u16       JSR clear_screen
                 LDA #0x76 ; H
                 STA screen
                 LDA #0
-                STA scan_temp
-                STA scan_temp + 1
-scanx_u16_l0    LDX scan_temp
-                LDY scan_temp + 1
+                STA temp
+                STA temp + 1
+scanx_u16_l0    LDX temp
+                LDY temp + 1
                 JSR printx_u16
 scanx_u16_l1    JSR get_key
                 CMP #KEY_GO
@@ -252,13 +253,157 @@ scanx_u16_l1    JSR get_key
                 ASL A
                 LDX #3
 scanx_u16_l2    ROL A
-                ROL scan_temp
-                ROL scan_temp + 1
+                ROL temp
+                ROL temp + 1
                 DEX
                 BPL scanx_u16_l2
                 BMI scanx_u16_l0
-scanx_u16_e     LDX scan_temp
-                LDY scan_temp + 1
+scanx_u16_e     JSR clear_screen
+                LDX temp
+                LDY temp + 1
+                RTS
+
+
+; Function scand_u16
+; Gets user input as an unsigned 16-bit decimal number
+; Input: none. Output: X, Y - number.
+; Destroys: A, X, Y.
+scand_u16       LDA #0
+                LDX #4
+scand_u16_l0    STA temp, X        ; init to zeroes
+                DEX
+                BPL scand_u16_l0
+
+scand_u16_l1    JSR clear_screen        ; main loop
+                LDA #0x5E ; d
+                STA screen
+
+                LDY #0
+scand_u16_l2    LDA temp, Y        ; skip leading zeroes
+                BNE scand_u16_s0
+                INY
+                TYA
+                CMP #4
+                BMI scand_u16_l2
+
+scand_u16_s0    TYA
+                CLC
+                ADC #3                  ; convert temp index to screen pos
+                TAX
+
+scand_u16_l3    TYA
+                PHA
+                LDA temp, Y        ; print current number
+                JSR putch
+                PLA
+                TAY
+                INY
+                INX
+                TXA
+                CMP #8
+                BMI scand_u16_l3
+
+scand_u16_l4    JSR get_key             ; wait for valid input
+                CMP #KEY_GO
+                BEQ scand_u16_e
+                CMP #KEY_DEC
+                BEQ scand_u16_bs
+                CMP #10
+                BPL scand_u16_l4
+                PHA
+                LDA temp
+                BEQ scand_u16_s1
+                PLA
+                JMP scand_u16_l4        ; we already have 5 digits
+
+scand_u16_s1    LDX #0
+scand_u16_s1l0  LDA temp + 1, X    ; shift all left and store new digit
+                STA temp, X
+                INX
+                TXA
+                CMP #4
+                BMI scand_u16_s1l0
+                PLA
+                STA temp + 4
+                JMP scand_u16_l1
+
+scand_u16_bs    LDX #3
+scand_u16_bsl0  LDA temp, X        ; shift all right
+                STA temp + 1, X
+                DEX
+                BPL scand_u16_bsl0
+                LDA #0
+                STA temp
+                JMP scand_u16_l1
+
+scand_u16_e     LDX #3                  ; first convert the buffer to packed BCD
+scand_u16_el0   ASL temp + 4
+                DEX
+                BPL scand_u16_el0
+
+                LDX #3
+scand_u16_el1   ROL temp + 4
+                ROL temp + 3
+                DEX
+                BPL scand_u16_el1
+
+                LDX #3
+scand_u16_el2   ASL temp + 2
+                DEX
+                BPL scand_u16_el2
+
+                LDX #3
+scand_u16_el3   ROL temp + 2
+                ROL temp + 1
+                DEX
+                BPL scand_u16_el3
+
+                LDA temp + 3
+                STA temp + 2
+
+                LDA #0
+                STA temp + 3
+                STA temp + 4
+
+                LDY #15                 ; Reverse double dabble
+
+scand_u16_el4   CLC
+                ROR temp
+                ROR temp + 1
+                ROR temp + 2
+                ROR temp + 3
+                ROR temp + 4
+
+                LDX #2
+scand_u16_el5   LDA temp, X
+                AND #0x0F
+                CMP #7
+                BMI scand_u16_es0
+
+                LDA temp, X
+                SEC
+                SBC #3
+                STA temp, X
+
+scand_u16_es0   LDA temp, X
+                AND #0xF0
+                CMP #0x70
+                BMI scand_u16_es1
+
+                LDA temp, X
+                SEC
+                SBC #0x30
+                STA temp, X
+
+scand_u16_es1   DEX
+                BPL scand_u16_el5
+
+                DEY
+                BPL scand_u16_el4
+
+                JSR clear_screen
+                LDX temp + 4
+                LDY temp + 3
                 RTS
 
 
