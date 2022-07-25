@@ -1,4 +1,4 @@
-EXAMPLES = hello fibonacci fibonacci-big
+EXAMPLES = hello fibonacci fibonacci-big counter
 
 TARGET = $(addsuffix .bin, ${EXAMPLES})
 
