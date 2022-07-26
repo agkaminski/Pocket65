@@ -75,6 +75,7 @@ sleep_temp1     ds 1
 
 address         ds 2
 mode_sel        ds 1
+key_pressed     ds 1
 
 irq_ptr         ds 2
 irq_valid       ds 1
@@ -709,6 +710,7 @@ reset0          STA screen, X
                 STA keycode_prev
                 LDA #0
                 STA key_cooldown
+                STA key_pressed
 
                 ; Jiffies, timers
                 STA jiffies
@@ -738,7 +740,17 @@ reset0          STA screen, X
 
 main_loop       JSR draw_screen
 
-                JSR get_key
+                JSR get_key_nb
+                CMP #KEY_NONE
+                BNE main_loop_s0
+                LDA #0
+                STA key_pressed
+                JMP main_loop
+
+main_loop_s0    LDX key_pressed
+                CPX #0
+                BNE main_loop
+                INC key_pressed
 
                 CMP #16
                 BPL main_inc
