@@ -23,8 +23,6 @@ loop            LDX num
                 svc_printd_u16
                 LDA #255
                 svc_msleep
-                LDA #255
-                svc_msleep
                 INC num
                 BNE loop
                 INC num + 1
