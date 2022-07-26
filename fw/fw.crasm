@@ -515,6 +515,7 @@ irq_register    LDA #0
                 STY irq_ptr + 1
                 LDA #1
                 STA irq_valid
+                SEI
                 RTS
 
 
@@ -635,6 +636,9 @@ get_key_l1      LDA keycode
 reset           LDA #0xff
                 STA init_done
 
+                CLI
+                CLD
+
                 ; Zero out user RAM
                 LDX #0xDF
 reset_l0        LDA #0
@@ -701,7 +705,6 @@ reset0          STA screen, X
                 ; Init done!
                 LDA #0
                 STA init_done
-                SEI
 
 main_loop       JSR draw_screen
 
