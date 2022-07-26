@@ -929,7 +929,7 @@ handle_timer    INC jiffies
                 BNE handle_timer_1
                 LDX jiffies + 1
                 INX
-                CPX #NMI_HZ / 256 - 1
+                CPX #NMI_HZ / 256
                 BMI handle_timer_0
                 INC time_s
                 LDX #0
