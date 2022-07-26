@@ -484,7 +484,7 @@ msleep_loop     LDA jiffies
                 SEC
                 SBC sleep_temp1
                 CMP sleep_temp0
-                BMI msleep_loop
+                BCC msleep_loop
                 RTS
 
 
@@ -499,7 +499,7 @@ sleep_loop      LDA time_s
                 SEC
                 SBC sleep_temp1
                 CMP sleep_temp0
-                BMI sleep_loop
+                BCC sleep_loop
                 RTS
 
 
