@@ -37,13 +37,13 @@ static void step(void)
 
 static void *core_thread(void *arg)
 {
-	cycles_t lastCycles, newCycles;
-	unsigned int speed;
+	//cycles_t lastCycles, newCycles;
+	//unsigned int speed;
 
 	while (1) {
 		lock(&core_global.lock);
 
-		lastCycles = core_global.cycles;
+		//lastCycles = core_global.cycles;
 
 		while (core_global.state == CORE_IDLE)
 			thread_wait(&core_global.cpucond, &core_global.lock);
@@ -75,13 +75,13 @@ static void *core_thread(void *arg)
 		else
 			core_global.state = CORE_IDLE;
 
-		newCycles = core_global.cycles;
-		speed = core_global.speed;
+		//newCycles = core_global.cycles;
+		//speed = core_global.speed;
 
 		thread_signal(&core_global.reqcond);
 		unlock(&core_global.lock);
 
-		thread_sleep((2 * 1000000 * (newCycles - lastCycles)) / speed);
+		//thread_sleep((2 * 1000000 * (newCycles - lastCycles)) / speed);
 	}
 
 	return NULL;

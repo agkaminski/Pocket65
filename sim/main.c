@@ -124,7 +124,7 @@ void *keyboard_thread(void *arg)
 		}
 
 		if (pressed) {
-			usleep(150 * 1000);
+			usleep(100 * 1000);
 			memset(key_row, 0xff, sizeof(key_row));
 		}
 	}
@@ -201,7 +201,7 @@ void pocket65(void)
 		       "[ 0   ][ 1   ][ 2   ][ 3   ]\n"
 		       "[ INC ][ DEC ][ SEL ][ GO  ]\n", cscreen);
 
-		usleep(10 * 1000);
+		usleep(1 * 1000);
 		core_nmi();
 	}
 }
