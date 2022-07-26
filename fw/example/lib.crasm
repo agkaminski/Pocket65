@@ -10,71 +10,75 @@ svc_irq_register MACRO
                 _SYSCALL 1
 ENDM
 
-svc_get_screen_ptr MACRO
+svc_nmi_register MACRO
                 _SYSCALL 2
 ENDM
 
-svc_putch MACRO
+svc_get_screen_ptr MACRO
                 _SYSCALL 3
 ENDM
 
-svc_putbyte MACRO
+svc_putch MACRO
                 _SYSCALL 4
 ENDM
 
-svc_dot_enable MACRO
+svc_putbyte MACRO
                 _SYSCALL 5
 ENDM
 
-svc_dot_disable MACRO
+svc_dot_enable MACRO
                 _SYSCALL 6
 ENDM
 
-svc_clear_screen MACRO
+svc_dot_disable MACRO
                 _SYSCALL 7
 ENDM
 
-svc_printx_u16 MACRO
+svc_clear_screen MACRO
                 _SYSCALL 8
 ENDM
 
-svc_printd_u16 MACRO
+svc_printx_u16 MACRO
                 _SYSCALL 9
 ENDM
 
-svc_printd_s16 MACRO
+svc_printd_u16 MACRO
                 _SYSCALL 10
 ENDM
 
-svc_scanx_u16 MACRO
+svc_printd_s16 MACRO
                 _SYSCALL 11
 ENDM
 
-svc_scand_u16 MACRO
+svc_scanx_u16 MACRO
                 _SYSCALL 12
 ENDM
 
-svc_get_key MACRO
+svc_scand_u16 MACRO
                 _SYSCALL 13
 ENDM
 
-svc_get_key_nb MACRO
+svc_get_key MACRO
                 _SYSCALL 14
 ENDM
 
-svc_get_jiffies MACRO
+svc_get_key_nb MACRO
                 _SYSCALL 15
 ENDM
 
-svc_get_seconds MACRO
+svc_get_jiffies MACRO
                 _SYSCALL 16
 ENDM
 
-svc_msleep MACRO
+svc_get_seconds MACRO
                 _SYSCALL 17
 ENDM
 
-svc_sleep MACRO
+svc_msleep MACRO
                 _SYSCALL 18
+ENDM
+
+svc_sleep MACRO
+                _SYSCALL 19
 ENDM
 

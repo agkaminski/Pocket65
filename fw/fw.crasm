@@ -40,6 +40,15 @@ NMI_HZ       equ 1024
 KEYB_COOLDWN equ 50
 
 
+JSR_IND MACRO
+        LDA #\2 >> 8
+        PHA
+        LDA #\2 & 0xFF
+        PHA
+        JMP (\1)
+ENDM
+
+
 DUMMY
 
 ; Zero page variables
@@ -70,6 +79,9 @@ mode_sel        ds 1
 irq_ptr         ds 2
 irq_valid       ds 1
 
+nmi_ptr         ds 2
+nmi_valid       ds 1
+
 autoinc         ds 1
 autoinc_cnt     ds 1
 
@@ -82,6 +94,8 @@ CODE
                 JMP reset_warm          ; void reset(void)
                 RTS
                 JMP irq_register        ; void irq_register(irq_addr (X, Y))
+                RTS
+                JMP nmi_register        ; void nmi_register(irq_addr (X, Y))
                 RTS
                 JMP get_screen_ptr      ; void screen_ptr (X, Y) get_screen_ptr(void)
                 RTS
@@ -519,6 +533,19 @@ irq_register    LDA #0
                 RTS
 
 
+; Function nmi_register
+; Registers user NMI handler
+; Input: X, Y - nmi handler pointer. Output: none.
+; Destroys: A.
+nmi_register    LDA #0
+                STA nmi_valid
+                STX nmi_ptr
+                STY nmi_ptr + 1
+                LDA #1
+                STA nmi_valid
+                RTS
+
+
 lut_7seg        db 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71 ; Dot disabled
                 db 0xBF, 0x86, 0xDB, 0xCF, 0xE6, 0xED, 0xFD, 0x87, 0xFF, 0xEF, 0xF7, 0xFC, 0xB9, 0xDE, 0xF9, 0xF1 ; Dot enabled
                 db 0x00                                                                                           ; Digit disabled
@@ -692,10 +719,13 @@ reset0          STA screen, X
                 STA autoinc
                 STA autoinc_cnt
 
-                ; IRQ handling
+                ; User IRQ and NMI handling
                 STA irq_ptr
                 STA irq_ptr + 1
                 STA irq_valid
+                STA nmi_ptr
+                STA nmi_ptr + 1
+                STA nmi_valid
 
                 ; Address
                 STA address
@@ -796,13 +826,7 @@ main_go         CMP #KEY_GO
 
                 ; GO key pressed - execute user program
                 JSR clear_screen
-                ; Prepare return address
-                LDA #reset_warm >> 8
-                PHA
-                LDA #reset_warm & 0xFF
-                PHA
-
-                JMP (address)
+                JSR_IND address, reset_warm
 
 main_f1         CMP #KEY_F1
                 BNE main_end
@@ -820,6 +844,7 @@ main_end        JMP main_loop
 
 ; System functions
 
+
 ; Function irq
 ; Handles IRQ
 ; Input: None. Output: None.
@@ -835,15 +860,7 @@ irq             PHA
                 TXA
                 PHA
 
-                ; There's no indirect JSR we need - do it hard way
-                ; Prepare return address on stack to allow RTS
-                LDA #irq_end >> 8
-                PHA
-                LDA #irq_end & 0xFF
-                PHA
-
-                ; Jump to address pointed by irq_ptr
-                JMP (irq_ptr)
+                JSR_IND irq_ptr, irq_end
 
 irq_end         PLA
                 TAX
@@ -866,7 +883,7 @@ nmi             PHA
                 ; Early exit if init is not complete
                 ; We cannot disable NMI, so this is needed
                 LDA init_done
-                BNE nmi_end
+                BNE nmi_end2
 
                 ; Increment jiffies
                 JSR handle_timer
@@ -875,11 +892,16 @@ nmi             PHA
                 JSR refresh_screen
                 JSR scan_keyb
 
+                LDA nmi_valid
+                BEQ nmi_end1
+
+                JSR_IND nmi_ptr, nmi_end1
+
                 ; Clear NMI to allow a next one to occur
                 ; Dummy write to preset 74HC74 flip-flop
-                STA NMI_CLR
+nmi_end1        STA NMI_CLR
 
-nmi_end         PLA
+nmi_end2        PLA
                 TAX
                 PLA
                 TAY
