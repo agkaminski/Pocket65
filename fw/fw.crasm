@@ -52,6 +52,8 @@ screen          ds 8
 scrnptr         ds 1
 
 keycode         ds 1
+keycode_prev    ds 1
+key_cooldown    ds 1
 
 jiffies         ds 2 ; Only for NMI use - non-atomic access
 time_s          ds 1
@@ -59,7 +61,6 @@ time_s          ds 1
 ; Not accessed by NMI
 
 temp            ds 6
-get_key_temp    ds 1
 sleep_temp0     ds 1
 sleep_temp1     ds 1
 
@@ -619,23 +620,13 @@ get_key_nb      LDA keycode
 ; Function get_key
 ; Blocks until a key is pressed
 ; Input: none. Output: A - key code.
-; Destroys: A, keyb_start
+; Destroys: A.
 get_key         LDA keycode
                 CMP #KEY_NONE
-                BNE get_key             ; Wait for none key pressed
-                LDA jiffies
-                STA get_key_temp        ; Begin cooldown period
-get_key_cooldwn LDA keycode
+                BNE get_key             ; wait for no key pressed
+get_key_l1      LDA keycode
                 CMP #KEY_NONE
-                BNE get_key             ; Check if still not pressed
-                LDA jiffies
-                SEC
-                SBC get_key_temp
-                CMP #KEYB_COOLDWN
-                BPL get_key_cooldwn     ; Wait for KEYB_COOLDWN jiffies
-get_key_press   LDA keycode
-                CMP #KEY_NONE
-                BEQ get_key_press       ; Wait for key press
+                BEQ get_key_l1          ; wait for a key press
                 RTS
 
 
@@ -673,8 +664,6 @@ reset_warm      CLI
                 TXS
 
                 ; Init variables
-                LDA #KEY_NONE
-                STA keycode
 
                 ; Clear screen
                 LDA #SCRN_BLANK
@@ -686,9 +675,11 @@ reset0          STA screen, X
                 ; Keycode
                 LDA #KEY_NONE
                 STA keycode
+                STA keycode_prev
+                LDA #0
+                STA key_cooldown
 
                 ; Jiffies, timers
-                LDA #0
                 STA jiffies
                 STA jiffies + 1
                 STA time_s
@@ -932,8 +923,8 @@ lut_keyb_scan_1  db KEY_F1, 0xC, 0x8, 0x4, 0x0, KEY_INC
 
 
 ; Function scan_keyboard
-; Scans whole keyboard, stores key code in keycode var
-; Input: None. Output: None.
+; Scans whole keyboard, debounces and stores key code in keycode var
+; Input: None. Output: keycode.
 ; Destroys: A, X, Y.
 scan_keyb       LDX #5                  ; loop counter
 scan_keyb_row_l LDY lut_keyb_scan_0, X  ; row address offset
@@ -943,15 +934,25 @@ scan_keyb_row_l LDY lut_keyb_scan_0, X  ; row address offset
                 DEX
                 BPL scan_keyb_row_l     ; are we done?
                 LDY #KEY_NONE           ; no key pressed
-                BNE scan_keyb_end
+                BNE scan_keyb_db
 scan_keyb_row_f LDY lut_keyb_scan_1, X  ; base key of a row
                 CLC                     ; To avoid endless loop, just in case
 scan_keyb_col_l ROR A                   ; get next bit into carry
-                BCC scan_keyb_end       ; have we found collumn?
+                BCC scan_keyb_db        ; have we found collumn?
                 INY                     ; select next key in a row
                 BCS scan_keyb_col_l     ; branch always
-scan_keyb_end   STY keycode
+scan_keyb_db    CPY keycode_prev        ; same key as before?
+                BEQ scan_keyb_db_s
+                STY keycode_prev
+                LDA #KEYB_COOLDWN       ; start new cooldown
+                STA key_cooldown
                 RTS
+scan_keyb_db_s  LDA key_cooldown        ; still the same keycode
+                BEQ scan_keyb_db_r      ; deboucing has been done already
+                DEC key_cooldown        ; decrement cooldown
+                BNE scan_keyb_db_r      ; debouncing done?
+                STY keycode             ; update new keycode
+scan_keyb_db_r  RTS
 
 
 ; Vectors
