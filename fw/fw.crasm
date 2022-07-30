@@ -815,6 +815,7 @@ reset0          STA screen, X
                 ; Init done!
                 LDA #0
                 STA init_done
+                STA NMI_CLR
 
                 ; Welcome screen
                 LDX #p65_str & 0xFF
