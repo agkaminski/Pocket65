@@ -41,6 +41,7 @@ KEYB_COOLDWN equ 50
 
 ; Misc
 ROM_ZP    equ 0xD0
+ROM_MAGIC equ 0x4B41
 
 
 JSR_IND MACRO
@@ -965,7 +966,7 @@ main_go         CMP #KEY_GO
                 JSR_IND address, reset_warm
 
 main_f1         CMP #KEY_F1
-                BNE main_end
+                BNE main_f2
 
                 ; F1 key pressed - toggle auto increment mode
                 LDA #0xFF
@@ -974,6 +975,45 @@ main_f1         CMP #KEY_F1
 
                 LDA #0
                 STA autoinc_cnt
+                JMP main_loop
+
+main_f2         CMP #KEY_F2
+                BNE main_f3
+
+                ;F2 key pressed - clear user memory
+                JSR usr_memclr
+                JMP main_loop
+
+main_f3         CMP #KEY_F3
+                BNE main_f4
+
+                ;F3 key_pressed - no operation
+                JMP main_loop
+
+main_f4         CMP #KEY_F4
+                BNE main_end
+
+                ;F4 key pressed - jump to ROM on /EXT_CS3 if present
+                LDA EXT3_BASE
+                CMP #ROM_MAGIC >> 8
+                BNE main_f4_fail
+                LDA EXT3_BASE + 1
+                CMP #ROM_MAGIC & 0xFF
+                BNE main_f4_fail
+
+                LDA #(EXT3_BASE + 2) >> 8
+                STA temp
+                LDA #(EXT3_BASE + 2) & 0xFF
+                STA temp + 1
+
+                JSR_IND temp, reset_warm
+
+main_f4_fail    JSR clear_screen
+                LDX #err_str & 0xFF
+                LDY #err_str >> 8
+                LDA #5
+                JSR prints
+                JSR get_key
 
 main_end        JMP main_loop
 
