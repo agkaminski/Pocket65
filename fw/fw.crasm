@@ -797,6 +797,7 @@ reset0          STA screen, X
                 ; Auto increment feature default off
                 STA autoinc
                 STA autoinc_cnt
+                STA mode_sel
 
                 ; User IRQ and NMI handling
                 STA irq_ptr
