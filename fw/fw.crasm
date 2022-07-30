@@ -723,7 +723,6 @@ memtest_mem     LDA #0
                 STA temp
                 LDA #2
                 STA temp + 1
-                LDA #0xAA
                 LDX #0
 memtest_meml1   LDA #0xAA
                 STA (temp, X)
