@@ -86,6 +86,9 @@ nmi_valid       ds 1
 autoinc         ds 1
 autoinc_cnt     ds 1
 
+ram_size        ds 2
+mem_err         ds 1
+
 
 CODE
 
@@ -115,6 +118,8 @@ CODE
                 JMP printd_u16          ; void printd_u16(number (X, Y))
                 RTS
                 JMP printd_s16          ; void printd_s16(number (X, Y))
+                RTS
+                JMP prints              ; void prints(address (X, Y), position (A))
                 RTS
                 JMP scanx_u16           ; number (X, Y) scanx_u16(void)
                 RTS
@@ -276,6 +281,24 @@ printx_u16      TXA
                 PLA
                 JSR putbyte
                 RTS
+
+
+; Function prints
+; Display decoced 7 segment char until NULL
+; Input: X, Y - pointer to string, A - starting pos. Output: screen.
+; Destroys: A, X, Y, temp.
+prints          STX temp
+                STY temp + 1
+                TAX
+                LDY #0
+prints_l        LDA (temp), Y
+                BEQ prints_e
+                STA screen, X
+                INY
+                INX
+                CPX #8
+                BCC prints_l
+prints_e        RTS
 
 
 ; Function scanx_u16
@@ -658,6 +681,12 @@ get_key_l1      LDA keycode
                 BEQ get_key_l1          ; wait for a key press
                 RTS
 
+; Strings
+p65_str         db 0x73, 0x7D, 0x6D, 0  ; P65
+year_const      db 0x22, 0x20           ; 2022 in hex
+err_str         db 0x79, 0x50, 0x50, 0  ; Err
+usr_str         db 0x3E, 0x6D, 0x50, 0  ; USr
+
 
 ; Function reset
 ; Entry point.
@@ -667,8 +696,57 @@ reset           LDA #0xff
                 CLI
                 CLD
 
+                ; Memory test
+                LDX #0
+                STX mem_err
+memtest_zp0     LDA #0xAA
+                STA 0, X
+                CMP 0, X
+                BNE memtest_zperr
+                LDA #0x55
+                STA 0, X
+                CMP 0, X
+                BNE memtest_zperr
+                INX
+                BNE memtest_zp0
+                BEQ memtest_zpnerr
+
+memtest_zperr   LDA #0xFF
+                STA mem_err
+                BNE memtest_mem
+
+memtest_zpnerr  LDA #0
+                STA mem_err
+
+                ; Don't test the stack area - NMI is still coming
+memtest_mem     LDA #0
+                STA temp
+                LDA #2
+                STA temp + 1
+                LDA #0xAA
+                LDX #0
+memtest_meml1   LDA #0xAA
+                STA (temp, X)
+                CMP (temp, X)
+                BNE memtest_memrsz
+                LDA #0x55
+                STA (temp, X)
+                CMP (temp, X)
+                BNE memtest_memrsz
+                INC temp
+                BNE memtest_meml1
+                INC temp + 1
+                JMP memtest_meml1
+
+memtest_memrsz  LDA temp
+                STA ram_size
+                LDA temp + 1
+                STA ram_size + 1
+
+                JMP memtest_end
+
                 ; Zero out user RAM
-                LDX #0xDF
+memtest_end     LDX #0xDF
 reset_l0        LDA #0
                 STA 0, X
                 DEX
@@ -678,10 +756,10 @@ reset_l0        LDA #0
                 STA temp
                 LDA #0x02
                 STA temp + 1
-reset_l1        LDX #0
+reset_l1        LDY #0
                 LDA #0
-reset_l2        STA (temp, X)
-                INX
+reset_l2        STA (temp), Y
+                INY
                 BNE reset_l2
                 INC temp + 1
                 LDA temp + 1
@@ -737,6 +815,39 @@ reset0          STA screen, X
                 ; Init done!
                 LDA #0
                 STA init_done
+
+                ; Welcome screen
+                LDX #p65_str & 0xFF
+                LDY #p65_str >> 8
+                LDA #0
+                JSR prints
+
+                LDX year_const
+                LDY year_const + 1
+                JSR printx_u16
+
+                LDA #1
+                JSR sleep
+
+                ; ZP access ok?
+                LDA mem_err
+                BEQ reset_noerr
+                LDX #err_str & 0xFF
+                LDY #err_str >> 8
+                LDA #0
+                JSR prints
+reset_err       JMP reset_err
+
+                ; Display memory size
+reset_noerr     LDX ram_size
+                LDY ram_size + 1
+                JSR printd_u16
+                LDX #usr_str & 0xFF
+                LDY #usr_str >> 8
+                LDA #0
+                JSR prints
+                LDA #2
+                JSR sleep
 
 main_loop       JSR draw_screen
 

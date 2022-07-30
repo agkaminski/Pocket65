@@ -185,6 +185,9 @@ void pocket65(void)
 				case 0x40: cscreen[i * 2] = '-'; break;
 				case 0x76: cscreen[i * 2] = 'H'; break;
 				case 0x38: cscreen[i * 2] = 'L'; break;
+				case 0x3e: cscreen[i * 2] = 'U'; break;
+				case 0x73: cscreen[i * 2] = 'P'; break;
+				case 0x50: cscreen[i * 2] = 'r'; break;
 				default:   cscreen[i * 2] = ' '; break;
 			}
 

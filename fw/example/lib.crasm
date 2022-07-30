@@ -50,35 +50,39 @@ svc_printd_s16 MACRO
                 _SYSCALL 11
 ENDM
 
-svc_scanx_u16 MACRO
+svc_prints MACRO
                 _SYSCALL 12
 ENDM
 
-svc_scand_u16 MACRO
+svc_scanx_u16 MACRO
                 _SYSCALL 13
 ENDM
 
-svc_get_key MACRO
+svc_scand_u16 MACRO
                 _SYSCALL 14
 ENDM
 
-svc_get_key_nb MACRO
+svc_get_key MACRO
                 _SYSCALL 15
 ENDM
 
-svc_get_jiffies MACRO
+svc_get_key_nb MACRO
                 _SYSCALL 16
 ENDM
 
-svc_get_seconds MACRO
+svc_get_jiffies MACRO
                 _SYSCALL 17
 ENDM
 
-svc_msleep MACRO
+svc_get_seconds MACRO
                 _SYSCALL 18
 ENDM
 
-svc_sleep MACRO
+svc_msleep MACRO
                 _SYSCALL 19
+ENDM
+
+svc_sleep MACRO
+                _SYSCALL 20
 ENDM
 
