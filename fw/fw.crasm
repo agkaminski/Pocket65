@@ -39,6 +39,9 @@ SCRN_BLANK equ 0x20
 NMI_HZ       equ 1024
 KEYB_COOLDWN equ 50
 
+; Misc
+ROM_ZP    equ 0xD0
+
 
 JSR_IND MACRO
         LDA #\2 >> 8
@@ -52,7 +55,7 @@ ENDM
 DUMMY
 
 ; Zero page variables
-* = RAM_BEGIN + 0xD0
+* = RAM_BEGIN + ROM_ZP
 
 ; Accessed by NMI
 init_done       ds 1 ; 0 - init done, others - NMI shouldn't do it's tasks
@@ -681,6 +684,33 @@ get_key_l1      LDA keycode
                 BEQ get_key_l1          ; wait for a key press
                 RTS
 
+; Function usr_memclr
+; Clears user memory (user ZP + rest of the RAM)
+; Input: none. Output: none
+; Destroys: A, X, Y, temp, temp + 1.
+usr_memclr      LDX #ROM_ZP - 1
+reset_l0        LDA #0
+                STA 0, X
+                DEX
+                BPL reset_l0
+
+                LDA #0x00
+                STA temp
+                LDA #0x02
+                STA temp + 1
+reset_l1        LDY #0
+                LDA #0
+reset_l2        STA (temp), Y
+                INC temp
+                BNE reset_l2
+                INC temp + 1
+                LDA temp + 1
+                CMP ram_size + 1
+                BCC reset_l2
+
+                RTS
+
+
 ; Strings
 p65_str         db 0x73, 0x7D, 0x6D, 0  ; P65
 year_const      db 0x22, 0x20           ; 2022 in hex
@@ -745,25 +775,7 @@ memtest_memrsz  LDA temp
                 JMP memtest_end
 
                 ; Zero out user RAM
-memtest_end     LDX #0xDF
-reset_l0        LDA #0
-                STA 0, X
-                DEX
-                BPL reset_l0
-
-                LDA #0x00
-                STA temp
-                LDA #0x02
-                STA temp + 1
-reset_l1        LDY #0
-                LDA #0
-reset_l2        STA (temp), Y
-                INY
-                BNE reset_l2
-                INC temp + 1
-                LDA temp + 1
-                CMP #9
-                BNE reset_l1
+memtest_end     JSR usr_memclr
 
 reset_warm      CLI
                 CLD
