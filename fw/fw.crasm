@@ -309,9 +309,12 @@ prints_e        RTS
 ; Gets user input as an unsigned 16-bit hex number
 ; Input: none. Output: X, Y - number.
 ; Destroys: A, X, Y.
-scanx_u16       JSR clear_screen
-                LDA #0x76 ; H
-                STA screen
+scanx_u16       LDA #0
+                LDX #7
+scanx_u16_c     STA screen, X
+                DEX
+                CPX #3
+                BNE scanx_u16_c
                 LDA #0
                 STA temp
                 STA temp + 1
@@ -350,9 +353,12 @@ scand_u16_l0    STA temp, X             ; init to zeroes
                 DEX
                 BPL scand_u16_l0
 
-scand_u16_l1    JSR clear_screen        ; main loop
-                LDA #0x5E ; d
-                STA screen
+scand_u16_l1    LDA #0
+                LDX #7
+scand_u16_cl    STA screen, X
+                DEX
+                CPX #2
+                BNE scand_u16_cl
 
                 LDY #0
 scand_u16_l2    LDA temp, Y             ; skip leading zeroes
