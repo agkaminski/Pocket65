@@ -954,11 +954,10 @@ main_dec        CMP #KEY_DEC
                 BNE main_sel
 
                 ; DEC key pressed - decrement address
+                DEC address
                 LDA address
-                SEC
-                SBC #1
-                STA address
-                BCS main_loop
+                CMP #0xFF
+                BNE main_loop
                 DEC address + 1
                 JMP main_loop
 
