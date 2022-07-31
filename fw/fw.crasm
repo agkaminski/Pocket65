@@ -779,7 +779,9 @@ memtest_meml1   LDA #0xAA
                 INC temp
                 BNE memtest_meml1
                 INC temp + 1
-                JMP memtest_meml1
+                LDA temp + 1
+                CMP #RAM_END >> 8
+                BCC memtest_meml1
 
 memtest_memrsz  LDA temp
                 STA ram_size
