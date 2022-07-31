@@ -11,6 +11,21 @@ Handheld PC based on the original 6502 CPU that fits into a pocket.
 - monitor FW that allows memory edit and running user programs,
 - expansion slot with 3 chip selects (up to 24 KB of external I/O and/or memory).
 
+# Memory map
+
+| Start  | End    | Description |
+|--------|--------|-------------|
+| 0x0000 | 0x07FF | RAM         |
+| 0x0800 | 0x1FFF | RAM aliased |
+| 0x2000 | 0x3FFF | External 1  |
+| 0x4000 | 0x5FFF | External 2  |
+| 0x6000 | 0x7FFF | External 3  |
+| 0x8000 | 0x9FFF | Screen      |
+| 0xA000 | 0xBFFF | Keyboard    |
+| 0xC000 | 0xDFFF | NMI ack     |
+| 0xE000 | 0xF7FF | ROM aliased |
+| 0xF800 | 0xFFFF | ROM         |
+
 # Monitor how-to
 
 ## Startup
