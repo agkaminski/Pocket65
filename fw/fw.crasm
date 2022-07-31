@@ -685,6 +685,7 @@ get_key_l1      LDA keycode
                 BEQ get_key_l1          ; wait for a key press
                 RTS
 
+
 ; Function usr_memclr
 ; Clears user memory (user ZP + rest of the RAM)
 ; Input: none. Output: none
