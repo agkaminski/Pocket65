@@ -118,6 +118,203 @@ selection is again confirmed with `GO` key. Memory is then copied and computer r
 
 ![error](img/f4fail.png)
 
+# Programming
+
+User program examples are provided in `fw/example` directory, along with user program template, BIOS calls user library and Makefile.
+
+User is free to use all memory, exluding:
+
+| Start  | End    | Description       |
+|--------|--------|-------------------|
+| 0x00D0 | 0x00FF | ROM ZP area       |
+| 0x0100 | 0x01FF | HW stack          |
+| 0x8000 | 0xDFFF | HW handled by ROM |
+
+## Interrupts
+
+Interrupt vectors are located in ROM area, so they cannot be changed by application code. Monitor can handle user IRQ and NMI handlers - there are two system calls to register user interrupt handler
+
+- `svc_irq_register` register the IRQ handler,
+- `svc_nmi_register` register the NMI handler.
+
+The handler address is passed in X (low byte) and Y (high byte) registers.
+
+Use `RTS` instruction to return from the handler insted of `RTI` - monitor handles return from the interrupt part.
+
+## System calls
+
+### Convention
+
+When X, Y registers are used to pass 16-bit value, X holds low byte and Y holds high byte.
+
+### `svc_reset`
+
+Perform warm reset.
+
+- Arguments: none.
+- Returns: none.
+- Destroys: N/A.
+
+### `svc_irq_register`
+
+Register user IRQ handler and enables interrupts.
+
+- Arguments: X, Y - handler address.
+- Returns: none.
+- Destroys: A.
+
+### `svc_nmi_register`
+
+Register user NMI handler.
+
+- Arguments: X, Y - handler address.
+- Returns: none.
+- Destroys: A.
+
+### `svc_get_screen_ptr`
+
+Return a pointer to the screen frame buffer to allow direct screen manipulation.
+
+- Arguments: nome.
+- Returns: X, Y - address.
+- Destroys: none.
+
+### `svc_putch`
+
+Displays hex character on the screen on position X.
+
+- Arguments: A - character, X - position
+- Returns: none.
+- Destroys: Y.
+
+### `svc_putbyte`
+
+Display a hex byte on the screen on position X. X is incremented to point on the next free screen posion.
+
+- Arguments: A - byte, X - position
+- Returns: none.
+- Destroys: none.
+
+### `svc_dot_enable`
+
+Enable dot on the position X.
+
+- Arguments: X - position
+- Returns: none.
+- Destroys: A.
+
+### `svc_dot_disable`
+
+Disable dot on the position X.
+
+- Arguments: X - position
+- Returns: none.
+- Destroys: A.
+
+### `svc_clear_screen`
+
+Clear screen.
+
+- Arguments: none.
+- Returns: none.
+- Destroys: A, X.
+
+### `svc_prinx_u16`
+
+Print 16-bit number in registers X, Y as hexadecimal number justified to the right.
+
+- Arguments: X, Y - number.
+- Returns: none.
+- Destroys: A, X.
+
+### `svc_prind_u16`
+
+Print 16-bit number in registers X, Y as unsigned decimal number justified to the right.
+
+- Arguments: X, Y - number.
+- Returns: none.
+- Destroys: A, X, Y.
+
+### `svc_prind_s16`
+
+Print 16-bit number in registers X, Y as signed decimal number justified to the right.
+
+- Arguments: X, Y - number.
+- Returns: none.
+- Destroys: A, X, Y.
+
+### `svc_prind_s16`
+
+Print NULL terminated decoded 7 segment string from position A.
+
+- Arguments: X, Y - pointer to the string, A - position on the screen.
+- Returns: none.
+- Destroys: A, X, Y.
+
+### `svc_scanx_u16`
+
+Get 16-bit unsigned number from the user (hexadecimal input).
+
+- Arguments: none.
+- Returns: X, Y - number.
+- Destroys: A, X, Y.
+
+### `svc_scand_u16`
+
+Get 16-bit unsigned number from the user (decimal input).
+
+- Arguments: none.
+- Returns: X, Y - number.
+- Destroys: A, X, Y.
+
+### `svc_get_key`
+
+Get key code - block until new key is pressed.
+
+- Arguments: none.
+- Returns: A - key code.
+- Destroys: none.
+
+### `svc_get_key_nb`
+
+Get current key code.
+
+- Arguments: none.
+- Returns: A - key code.
+- Destroys: none.
+
+### `svc_get_jiffies`
+
+Get current miliseconds value (one byte).
+
+- Arguments: none.
+- Returns: A - jiffies.
+- Destroys: none.
+
+### `svc_get_seconds`
+
+Get current seconds value (one byte).
+
+- Arguments: none.
+- Returns: A - seconds.
+- Destroys: none.
+
+### `svc_msleep`
+
+Sleep for 0-255 ms.
+
+- Arguments: A - time (ms).
+- Returns: none.
+- Destroys: A.
+
+### `svc_sleep`
+
+Sleep for 0-255 s.
+
+- Arguments: A - time (s).
+- Returns: none.
+- Destroys: A.
+
 # License
 
 Free for non-commercial use and educational purposes. See LICENSE.md for details.
