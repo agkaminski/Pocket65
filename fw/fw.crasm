@@ -691,24 +691,25 @@ get_key_l1      LDA keycode
 ; Input: none. Output: none
 ; Destroys: A, X, Y, temp, temp + 1.
 usr_memclr      LDX #ROM_ZP - 1
-reset_l0        LDA #0
-                STA 0, X
+                LDA #0
+usr_memclr_l0   STA 0, X
                 DEX
-                BPL reset_l0
+                CPX #0xFF
+                BNE usr_memclr_l0
 
                 LDA #0x00
                 STA temp
                 LDA #0x02
                 STA temp + 1
-reset_l1        LDY #0
-                LDA #0
-reset_l2        STA (temp), Y
+usr_memclr_l1   LDY #0
+usr_memclr_l2   LDA #0
+                STA (temp), Y
                 INC temp
-                BNE reset_l2
+                BNE usr_memclr_l2
                 INC temp + 1
                 LDA temp + 1
                 CMP ram_size + 1
-                BCC reset_l2
+                BCC usr_memclr_l2
 
                 RTS
 
