@@ -321,7 +321,7 @@ scanx_u16_l0    LDX temp
 scanx_u16_l1    JSR get_key
                 CMP #KEY_GO
                 BEQ scanx_u16_e
-                CMP #15
+                CMP #16
                 BPL scanx_u16_l1
                 ASL A
                 ASL A
