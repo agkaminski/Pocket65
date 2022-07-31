@@ -8,9 +8,7 @@ RST_VECT equ 0xFFFC
 
 ; Memory
 ROM_BEGIN equ 0xF800
-ROM_END   equ 0xFFFF
 RAM_BEGIN equ 0x0000
-RAM_END   equ 0x0800
 
 ; I/O
 EXT1_BASE equ 0x2000
@@ -763,7 +761,9 @@ memtest_zpnerr  LDA #0
                 STA mem_err
 
                 ; Don't test the stack area - NMI is still coming
-memtest_mem     LDA #0
+memtest_mem     LDA #0xFF
+                STA 0                   ; ZP access marker
+                LDA #0
                 STA temp
                 LDA #2
                 STA temp + 1
@@ -776,12 +776,14 @@ memtest_meml1   LDA #0xAA
                 STA (temp, X)
                 CMP (temp, X)
                 BNE memtest_memrsz
+                LDA #0xFF
+                CMP 0
+                BNE memtest_memrsz      ; ZP has been written to - RAM aliasing detected
                 INC temp
                 BNE memtest_meml1
                 INC temp + 1
                 LDA temp + 1
-                CMP #RAM_END >> 8
-                BCC memtest_meml1
+                JMP memtest_meml1
 
 memtest_memrsz  LDA temp
                 STA ram_size
