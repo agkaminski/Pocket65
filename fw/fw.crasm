@@ -1212,6 +1212,12 @@ scan_keyb_db_s  LDA key_cooldown        ; still the same keycode
                 STY keycode             ; update new keycode
 scan_keyb_db_r  RTS
 
+; Copyright/version
+
+* = 0xFF80
+ASC "Copyright A.K. 2022, github.com/agkaminski/Pocket65, version "
+INCLUDE version.inc
+DB 0
 
 ; Vectors
 
