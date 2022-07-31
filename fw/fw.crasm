@@ -93,6 +93,9 @@ autoinc_cnt     ds 1
 ram_size        ds 2
 mem_err         ds 1
 
+copy_src        ds 2
+copy_len        ds 2
+
 
 CODE
 
@@ -725,6 +728,8 @@ p65_str         db 0x73, 0x7D, 0x6D, 0  ; P65
 year_const      db 0x22, 0x20           ; 2022 in hex
 err_str         db 0x79, 0x50, 0x50, 0  ; Err
 usr_str         db 0x3E, 0x6D, 0x50, 0  ; USr
+src_str         db 0x6D, 0x50, 0x39, 0  ; SrC
+len_str         db 0x38, 0x79, 0x54, 0  ; LEn
 
 
 ; Function reset
@@ -988,20 +993,61 @@ main_f1         CMP #KEY_F1
 main_f2         CMP #KEY_F2
                 BNE main_f3
 
-                ;F2 key pressed - clear user memory
+                ; F2 key pressed - clear user memory
                 JSR usr_memclr
                 JMP main_loop
 
 main_f3         CMP #KEY_F3
                 BNE main_f4
 
-                ;F3 key_pressed - no operation
+                ; F3 key_pressed - copy memory
+                JSR clear_screen
+                LDX #src_str & 0xff
+                LDY #src_str >> 8
+                LDA #0
+                JSR prints
+                JSR scanx_u16
+                STX copy_src
+                STY copy_src + 1
+                LDX #len_str & 0xff
+                LDY #len_str >> 8
+                LDA #0
+                JSR prints
+                JSR scanx_u16
+
+                LDA address
+                STA temp
+                LDA address + 1
+                STA temp + 1
+                STX temp + 2
+                STY temp + 3
+                LDY #0
+main_f3_l       LDA (copy_src), Y
+                STA (temp), Y
+
+                INC copy_src
+                BNE main_f3_s0
+                INC copy_src + 1
+
+main_f3_s0      INC temp
+                BNE main_f3_s1
+                INC temp + 1
+
+main_f3_s1      DEC temp + 2
+                LDA temp + 2
+                CMP #0xFF
+                BNE main_f3_l
+                DEC temp + 3
+                LDA temp + 3
+                CMP #0xFF
+                BNE main_f3_l
+
                 JMP main_loop
 
 main_f4         CMP #KEY_F4
                 BNE main_end
 
-                ;F4 key pressed - jump to ROM on /EXT_CS3 if present
+                ; F4 key pressed - jump to ROM on /EXT_CS3 if present
                 LDA EXT3_BASE
                 CMP #ROM_MAGIC >> 8
                 BNE main_f4_fail
