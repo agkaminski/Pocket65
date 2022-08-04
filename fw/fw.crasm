@@ -564,7 +564,7 @@ irq_register    LDA #0
                 STY irq_ptr + 1
                 LDA #1
                 STA irq_valid
-                SEI
+                CLI
                 RTS
 
 
@@ -735,7 +735,7 @@ len_str         db 0x38, 0x79, 0x54, 0  ; LEn
 reset           LDA #0xff
                 STA init_done
 
-                CLI
+                SEI
                 CLD
 
                 ; Memory test
@@ -795,7 +795,7 @@ memtest_memrsz  LDA temp
                 ; Zero out user RAM
 memtest_end     JSR usr_memclr
 
-reset_warm      CLI
+reset_warm      SEI
                 CLD
 
                 ; Setup stack
