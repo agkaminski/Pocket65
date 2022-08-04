@@ -738,6 +738,10 @@ reset           LDA #0xff
                 SEI
                 CLD
 
+                ; Clear screen control registers
+                LDA #0
+                STA SCRN_BASE
+
                 ; Memory test
                 LDX #0
                 STX mem_err
@@ -799,7 +803,7 @@ reset_warm      SEI
                 CLD
 
                 ; Setup stack
-                LDX #0xff
+                LDX #0xFF
                 TXS
 
                 ; Init variables
