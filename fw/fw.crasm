@@ -708,15 +708,15 @@ usr_memclr_l0   STA 0, X
                 STA temp
                 LDA #0x02
                 STA temp + 1
-usr_memclr_l1   LDY #0
-usr_memclr_l2   LDA #0
-                STA (temp), Y
+                LDY #0
+usr_memclr_l1   LDA #0
+usr_memclr_l2   STA (temp), Y
                 INC temp
                 BNE usr_memclr_l2
                 INC temp + 1
                 LDA temp + 1
                 CMP ram_size + 1
-                BCC usr_memclr_l2
+                BCC usr_memclr_l1
 
                 RTS
 
@@ -744,7 +744,6 @@ reset           LDA #0xff
 
                 ; Memory test
                 LDX #0
-                STX mem_err
 memtest_zp0     LDA #0xAA
                 STA 0, X
                 CMP 0, X
@@ -758,43 +757,34 @@ memtest_zp0     LDA #0xAA
                 BEQ memtest_zpnerr
 
 memtest_zperr   LDA #0xFF
-                STA mem_err
-                BNE memtest_mem
+                BNE memtest_zpe
 
 memtest_zpnerr  LDA #0
-                STA mem_err
+memtest_zpe     STA mem_err
 
                 ; Don't test the stack area - NMI is still coming
 memtest_mem     LDA #0xFF
                 STA 0                   ; ZP access marker
                 LDA #0
-                STA temp
+                STA ram_size
                 LDA #2
-                STA temp + 1
+                STA ram_size + 1
                 LDX #0
 memtest_meml1   LDA #0xAA
-                STA (temp, X)
-                CMP (temp, X)
-                BNE memtest_memrsz
+                STA (ram_size, X)
+                CMP (ram_size, X)
+                BNE memtest_end
                 LDA #0x55
-                STA (temp, X)
-                CMP (temp, X)
-                BNE memtest_memrsz
+                STA (ram_size, X)
+                CMP (ram_size, X)
+                BNE memtest_end
                 LDA #0xFF
                 CMP 0
-                BNE memtest_memrsz      ; ZP has been written to - RAM aliasing detected
-                INC temp
+                BNE memtest_end         ; ZP has been written to - RAM aliasing detected
+                INC ram_size
                 BNE memtest_meml1
-                INC temp + 1
-                LDA temp + 1
+                INC ram_size + 1
                 JMP memtest_meml1
-
-memtest_memrsz  LDA temp
-                STA ram_size
-                LDA temp + 1
-                STA ram_size + 1
-
-                JMP memtest_end
 
                 ; Zero out user RAM
 memtest_end     JSR usr_memclr
@@ -1225,11 +1215,11 @@ DB 0
 
 ; Vectors
 
-* = RST_VECT
-dw reset
-
 * = NMI_VECT
 dw nmi
+
+* = RST_VECT
+dw reset
 
 * = IRQ_VECT
 dw irq
