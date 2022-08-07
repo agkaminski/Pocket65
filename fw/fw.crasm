@@ -799,7 +799,7 @@ reset_warm      SEI
                 ; Init variables
 
                 ; Clear screen
-                LDA #SCRN_BLANK
+                LDA #0
                 LDX #7
 reset0          STA screen, X
                 DEX
