@@ -2,6 +2,8 @@
 
 Handheld PC based on the original 6502 CPU that fits into a pocket.
 
+![computer](img/computer.png)
+
 ## Features
 
 - 8 digit multiplexed 7-segment display,
