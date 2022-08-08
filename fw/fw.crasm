@@ -637,6 +637,36 @@ dot_disable     LDA #0x7F
                 RTS
 
 
+; Function draw_byte
+; Updates screen - only data value.
+; Input: address. Output: screen.
+; Destroys: A, Y.
+draw_byte       LDA #0x80
+                AND screen + 6
+                STA temp
+                LDA #0x80
+                AND screen + 7
+                STA temp + 1
+                LDY #0
+                LDA (address), Y
+                PHA
+                LSR A
+                LSR A
+                LSR A
+                LSR A
+                TAY
+                LDA lut_7seg, Y
+                ORA temp
+                STA screen + 6
+                PLA
+                AND #0x0F
+                TAY
+                LDA lut_7seg, Y
+                ORA temp + 1
+                STA screen + 7
+                RTS
+
+
 ; Function draw_screen
 ; Updates screen - current address and memory value.
 ; Input: address, mode_sel. Output: screen.
@@ -875,13 +905,13 @@ reset_noerr     LDX ram_size
                 JSR sleep
 
 main_loop       JSR draw_screen
-
-                JSR get_key_nb
+main_loop_wait  JSR get_key_nb
                 CMP #KEY_NONE
                 BNE main_loop_s0
                 LDA #0
                 STA key_pressed
-                JMP main_loop
+                JSR draw_byte
+                JMP main_loop_wait
 
 main_loop_s0    LDX key_pressed
                 CPX #0
