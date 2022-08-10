@@ -1,9 +1,12 @@
 EXAMPLES = hello fibonacci fibonacci-big counter
 
-TARGET = $(addsuffix .bin, ${EXAMPLES})
+TARGET = $(addsuffix .txt, ${EXAMPLES})
 
 .PHONY: clean
-.PRECIOUS: %.hex
+.PRECIOUS: %.bin
+
+%.txt: %.bin
+	@xxd -g1 -c8 "$<" > "$@"
 
 %.bin: %.hex
 	@objcopy -Iihex "$<" -Obinary "$@"
@@ -14,4 +17,4 @@ TARGET = $(addsuffix .bin, ${EXAMPLES})
 all: ${TARGET}
 
 clean:
-	@rm -f *.hex *.bin *.log
+	@rm -f *.hex *.bin *.log *.txt
