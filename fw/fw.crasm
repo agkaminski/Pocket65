@@ -43,9 +43,9 @@ ROM_MAGIC equ 0x4B41
 
 
 JSR_IND MACRO
-        LDA #\2 >> 8
+        LDA #(\2 - 1) >> 8
         PHA
-        LDA #\2 & 0xFF
+        LDA #(\2 - 1) & 0xFF
         PHA
         JMP (\1)
 ENDM
