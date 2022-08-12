@@ -1,4 +1,4 @@
-EXAMPLES = hello fibonacci fibonacci-big counter
+EXAMPLES = hello fibonacci fibonacci-big counter clock
 
 TARGET = $(addsuffix .txt, ${EXAMPLES})
 
