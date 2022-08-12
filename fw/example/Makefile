@@ -6,7 +6,7 @@ TARGET = $(addsuffix .txt, ${EXAMPLES})
 .PRECIOUS: %.bin
 
 %.txt: %.bin
-	@xxd -g1 -c8 "$<" > "$@"
+	@xxd -g1 -c8 -o0x200 "$<" > "$@"
 
 %.bin: %.hex
 	@objcopy -Iihex "$<" -Obinary "$@"
