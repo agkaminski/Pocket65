@@ -26,3 +26,10 @@ During the design phase it was supposed to be male connector, later changed to f
 
 None needed, but should be fixed in future revisions.
 
+## Memory timing issues
+
+Some 2716 chips dont work right - computer crashes. About half of my stock 2716 works, other half does not.
+
+### Solution
+
+None, if computer crashes replace EPROM with another 2716.
