@@ -1,4 +1,4 @@
-EXAMPLES = hello fibonacci fibonacci-big counter clock clock-bcd
+EXAMPLES = hello fibonacci fibonacci-big counter clock clock-bcd cpuid
 
 TARGET = $(addsuffix .txt, ${EXAMPLES})
 
